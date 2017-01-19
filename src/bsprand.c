@@ -42,14 +42,35 @@ void BSPRand_Cleanup()
 	Map_t *pMap = BSPRand_GetCurrentMap();
 	if ( pMap )
 	{
+		for ( int i = 0; i < pMap->textureCount; i++ )
+			free( pMap->textures[i] );
 		free( pMap->textures );
+
+		for ( int i = 0; i < pMap->texinfoCount; i++ )
+			free( pMap->texinfo[i] );
 		free( pMap->texinfo );
+
+		for ( int i = 0; i < pMap->texdataCount; i++ )
+			free( pMap->texdata[i] );
 		free( pMap->texdata );
+
 		free( pMap->texdataStringData );
 		free( pMap->texdataStringTable );
+
+		for ( int i = 0; i < pMap->modelCount; i++ )
+			free( pMap->models[i] );
 		free( pMap->models );
+		
+		for ( int i = 0; i < pMap->dispCount; i++ )
+			free( pMap->displacements[i] );
 		free( pMap->displacements );
+
+		for ( int i = 0; i < pMap->overlayCount; i++ )
+			free( pMap->overlays[i] );
 		free( pMap->overlays );
+		
+		for ( int i = 0; i < pMap->lightCount; i++ )
+			free( pMap->lights[i] );
 		free( pMap->lights );
 
 		free( pMap );
@@ -79,6 +100,16 @@ void BSPRand_CreateMap()
 	pMap->displacements = NULL;
 	pMap->overlays = NULL;
 	pMap->lights = NULL;
+
+	pMap->textureCount = 0;
+	pMap->texinfoCount = 0;
+	pMap->texdataCount = 0;
+	pMap->texdataStringDataSize = 0;
+	pMap->texdataStringTableCount = 0;
+	pMap->modelCount = 0;
+	pMap->dispCount = 0;
+	pMap->overlayCount = 0;
+	pMap->lightCount = 0;
 
 	BSPRand_SetCurrentMap( pMap );
 }
