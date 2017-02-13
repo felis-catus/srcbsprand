@@ -26,4 +26,6 @@ const char *GetFileExtension( const char *path );
 
 void StripExtension( const char *in, char *out, int outSize );
 
+int GetLineFromString( const char *in, char *out, int outSize );
+
 #endif

@@ -51,6 +51,9 @@ int Main_Execute( int argc, char *argv[] )
 			"-dumptexlist : Same as above, but for texture list.\n",
 			"-dumpstrtable : Dumps both input and output string tables.\n" );
 
+#ifdef _DEBUG
+		system( "pause" );
+#endif
 		return 0;
 	}
 
@@ -103,6 +106,9 @@ int Main_Execute( int argc, char *argv[] )
 	if ( !File_Init( argv[1] ) )
 	{
 		Spew( "BSP READ FAIL!!! Exiting...\n" );
+#ifdef _DEBUG
+		system( "pause" );
+#endif
 		return -1;
 	}
 
@@ -127,6 +133,9 @@ int Main_Execute( int argc, char *argv[] )
 	if ( !BSPRand_Init() )
 	{
 		Spew( "RANDOMIZER FAIL!!! Exiting...\n" );
+#ifdef _DEBUG
+		system( "pause" );
+#endif
 		return -1;
 	}
 
@@ -144,6 +153,9 @@ int Main_Execute( int argc, char *argv[] )
 	if ( !File_WriteBSP( destname ) )
 	{
 		Spew( "BSP WRITE FAIL!!! Exiting...\n" );
+#ifdef _DEBUG
+		system( "pause" );
+#endif
 		return -1;
 	}
 
@@ -156,6 +168,9 @@ int Main_Execute( int argc, char *argv[] )
 
 	Main_Cleanup();
 
+#ifdef _DEBUG
+	system( "pause" );
+#endif
 	return 0;
 }
 

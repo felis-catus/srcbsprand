@@ -26,6 +26,16 @@ typedef struct
 	byte r, g, b, a;
 } color32;
 
+// key / value pair sizes
+#define	MAX_KEY		32
+#define	MAX_VALUE	1024
+
+typedef struct
+{
+	char key[MAX_KEY];
+	char value[MAX_VALUE];
+} KeyValue_t;
+
 #define MAX_PATH 260
 
 #endif

@@ -69,13 +69,17 @@ BOOL File_CopyBSP( const char *filename )
 BOOL File_WriteBSP( const char *filename )
 {
 	Spew( "Starting to write BSP!\n" );
+
 	FILE *file = fopen( filename, "r+b" );
+	FILE *fileAppend = fopen( filename, "a+b" );
 	Map_t *map = BSPRand_GetCurrentMap();
 
 	File_WriteHeader( file, map );
+	File_WriteEntityList( fileAppend, map );
 	File_WriteTextures( file, map );
 
 	fclose( file );
+	fclose( fileAppend );
 
 	return TRUE;
 }
@@ -119,20 +123,21 @@ void File_ReadHeader( FILE *file, Map_t *map )
 
 void File_ReadEntityList( FILE *file, Map_t *map )
 {
-	Spew( "Reading entity lump...\n" );
+	Spew( "Reading entity list...\n" );
 
 	int size = map->header.lumps[LUMP_ENTITIES].filelen;
-	map->entities.buffer = (char*)malloc( size );
+	map->entitiesBuffer = (char*)malloc( size );
+	map->entitiesBufferSize = size;
 
 	fseek( file, map->header.lumps[LUMP_ENTITIES].fileofs, SEEK_SET );
-	fread( map->entities.buffer, size, sizeof( char ), file );
+	fread( map->entitiesBuffer, size, sizeof( char ), file );
 
 	if ( Main_ShouldDumpEntList() )
 	{
-		Spew( "Dumping entity lump to entitylist.txt\n" );
+		Spew( "Dumping input entity list to entitylist_in.txt\n" );
 
-		FILE *entfile = fopen( "entitylist.txt", "w" );
-		fwrite( map->entities.buffer, sizeof( char ), size, entfile );
+		FILE *entfile = fopen( "entitylist_in.txt", "w" );
+		fwrite( map->entitiesBuffer, sizeof( char ), size, entfile );
 	}
 }
 
@@ -290,8 +295,32 @@ void File_ReadOverlays( FILE *file, Map_t *map )
 void File_WriteHeader( FILE *file, Map_t *map )
 {
 	Spew( "Writing BSP header...\n" );
-	if ( file )
-		fwrite( &map->header, 1, sizeof( BSPHeader_t ), file );
+
+	// TEMP: throw new entity list into bottom of file and change fileofs, yeah i know
+	fseek( file, 0, SEEK_END );
+	long iWhere = ftell( file );
+	map->header.lumps[LUMP_ENTITIES].fileofs = iWhere;
+	map->header.lumps[LUMP_ENTITIES].filelen = map->entitiesBufferSize;
+
+	fseek( file, 0, SEEK_SET );
+	fwrite( &map->header, 1, sizeof( BSPHeader_t ), file );
+}
+
+void File_WriteEntityList( FILE *file, Map_t *map )
+{
+	// TODO:
+	Spew( "Writing entity list...\n" );
+
+	// TEMP: throw new entity list into bottom of file and change fileofs, yeah i know
+	fwrite( map->entitiesBuffer, map->entitiesBufferSize, sizeof( char ), file );
+
+	if ( Main_ShouldDumpEntList() )
+	{
+		Spew( "Dumping output entity list to entitylist_out.txt\n" );
+
+		FILE *entfile = fopen( "entitylist_out.txt", "w" );
+		fwrite( map->entitiesBuffer, sizeof( char ), map->entitiesBufferSize, entfile );
+	}
 }
 
 void File_WriteTextures( FILE *file, Map_t *map )

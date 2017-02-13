@@ -117,29 +117,6 @@ const char *VarArgs( const char *format, ... )
 	return string;
 }
 
-static BOOL CopyToMaxChars( char *pOut, int outSize, const char *pIn, int nCharsToCopy )
-{
-	if ( outSize == 0 )
-		return FALSE;
-
-	int iOut = 0;
-	while ( *pIn && nCharsToCopy > 0 )
-	{
-		if ( iOut == ( outSize - 1 ) )
-		{
-			pOut[iOut] = 0;
-			return FALSE;
-		}
-		pOut[iOut] = *pIn;
-		++iOut;
-		++pIn;
-		--nCharsToCopy;
-	}
-
-	pOut[iOut] = 0;
-	return TRUE;
-}
-
 BOOL PATHSEPARATOR( char c )
 {
 	return c == '\\' || c == '/';
@@ -186,4 +163,22 @@ void StripExtension( const char *in, char *out, int outSize )
 			strncpy( out, in, outSize );
 		}
 	}
+}
+
+int GetLineFromString( const char *in, char *out, int outSize )
+{
+	strncpy( out, in, outSize );
+
+	int len = strlen( in ) + 1;
+	for ( int i = 0; i < len; i++ )
+	{
+		if ( in[i] == '\n' )
+		{
+			out[i] = '\0';
+			break;
+		}
+	}
+
+	int retLen = strlen( out ) - 1;
+	return retLen;
 }

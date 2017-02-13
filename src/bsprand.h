@@ -2,6 +2,7 @@
 #define BSPRAND_H
 
 #define MAX_STRINGDATA 256000 // move this
+#define	MAX_MAP_ENTITIES 8192 // move this too
 
 // texture struct
 typedef struct
@@ -17,13 +18,24 @@ typedef struct
 	char *data;
 } StringTableItem_t;
 
+// Single entity, not the buffer!
+typedef struct
+{
+	//char *classname;
+	KeyValue_t **keyValues;
+	int kvCount;
+} Entity_t;
+
 // The loaded map
 typedef struct
 {
 	BSPHeader_t header;
 	BSPVersion version;
 
-	entity_t entities;
+	Entity_t **entities;
+	int entitiesCount;
+	char *entitiesBuffer;
+	int entitiesBufferSize;
 
 	Texture_t **textures;
 	int textureCount;
@@ -69,6 +81,22 @@ void BSPRand_ChangeModels();
 
 BOOL BSPRand_BuildTextureList();
 BOOL BSPRand_TextureRandomizer();
+
+BOOL BSPRand_ExtractEnts();
+BOOL BSPRand_EntityRandomizer();
+BOOL BSPRand_BuildEntBuffer();
+
+/* TODO: Move these */
+const char *BSPRand_KvGetValue( Entity_t *ent, const char *key );
+void BSPRand_KvSetValue( Entity_t *ent, const char *key, const char *value );
+KeyValue_t *BSPRand_KvCreate( Entity_t *ent, const char *key, const char *value );
+
+Vector BSPRand_GetEntOrigin( Entity_t *ent );
+QAngle BSPRand_GetEntAngles( Entity_t *ent );
+
+void BSPRand_SetEntOrigin( Entity_t *ent, Vector origin );
+void BSPRand_SetEntAngles( Entity_t *ent, QAngle angles );
+/*------------------*/
 
 void BSPRand_ClearCaches();
 

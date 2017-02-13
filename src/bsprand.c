@@ -34,6 +34,30 @@ BOOL BSPRand_Init()
 	if ( !BSPRand_ChangeTextures() )
 		return FALSE;
 
+	BSPRand_ExtractEnts();
+
+	if ( Main_IsVerbose() )
+	{
+		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+		{
+			Entity_t *ent = pCurrentMap->entities[i];
+			if ( ent )
+			{
+				const char *classname = BSPRand_KvGetValue( ent, "classname" );
+				Vector origin = BSPRand_GetEntOrigin( ent );
+				QAngle angles = BSPRand_GetEntAngles( ent );
+
+				Spew( "classname = %s\n", classname );
+				Spew( "origin = %.0f, %.0f, %.0f\n", origin.x, origin.y, origin.z );
+				Spew( "angles = %.0f, %.0f, %.0f\n", angles.x, angles.y, angles.z );
+			}
+		}
+	}
+
+	BSPRand_EntityRandomizer();
+
+	BSPRand_BuildEntBuffer();
+
 	return TRUE;
 }
 
@@ -42,6 +66,17 @@ void BSPRand_Cleanup()
 	Map_t *pMap = BSPRand_GetCurrentMap();
 	if ( pMap )
 	{
+		for ( int i = 0; i < pMap->entitiesCount; i++ )
+		{
+			for ( int j = 0; j < pMap->entities[i]->kvCount; j++ )
+				free( pMap->entities[i]->keyValues[j] );
+
+			free( pMap->entities[i] );
+		}
+		free( pMap->entities );
+
+		free( pMap->entitiesBuffer );
+
 		for ( int i = 0; i < pMap->textureCount; i++ )
 			free( pMap->textures[i] );
 		free( pMap->textures );
@@ -91,6 +126,8 @@ void BSPRand_CreateMap()
 	Map_t *pMap = (Map_t*)malloc( sizeof( Map_t ) );
 
 	// init
+	pMap->entities = NULL;
+	pMap->entitiesBuffer = NULL;
 	pMap->textures = NULL;
 	pMap->texinfo = NULL;
 	pMap->texdata = NULL;
@@ -101,6 +138,8 @@ void BSPRand_CreateMap()
 	pMap->overlays = NULL;
 	pMap->lights = NULL;
 
+	pMap->entitiesCount = 0;
+	pMap->entitiesBufferSize = 0;
 	pMap->textureCount = 0;
 	pMap->texinfoCount = 0;
 	pMap->texdataCount = 0;
@@ -500,3 +539,401 @@ BOOL BSPRand_VPKTextureScan( char *dir )
 	return TRUE;
 }
 
+BOOL BSPRand_ExtractEnts()
+{
+	Spew( "Extracting entities...\n" );
+
+	Map_t *pMap = BSPRand_GetCurrentMap();
+
+	// extract ents from the ASCII buffer
+	const char *pszEntBuffer = pMap->entitiesBuffer;
+	char line[256];
+	int len = strlen( pszEntBuffer );
+	int cur = 0;
+	BOOL endBracketFound = FALSE;
+
+	Entity_t **ents = NULL;
+	Entity_t *curEnt = NULL;
+	int entCount = 0;
+
+	int kvCount = 0;
+
+	while ( cur < len )
+	{
+		// get line
+		int lineLen = GetLineFromString( &pszEntBuffer[cur], line, sizeof( line ) );
+
+		if ( line[0] == '\0' || line[0] == '\n' )
+		{
+			cur++;
+			continue;
+		}
+
+		// do stuff with the line
+		if ( line[0] == '{' )
+		{
+			if ( curEnt )
+				free( curEnt );
+
+			// new entity
+			curEnt = malloc( sizeof( Entity_t ) );
+			curEnt->keyValues = NULL;
+
+			endBracketFound = FALSE;
+		}
+		else if ( line[0] == '}' )
+		{
+			// put entity in list
+			if ( curEnt )
+			{
+				entCount++;
+				ents = realloc( ents, entCount * sizeof( Entity_t* ) );
+				ents[entCount - 1] = curEnt;
+				curEnt = NULL;
+				kvCount = 0;
+			}
+
+			endBracketFound = TRUE;
+		}
+		else if ( !endBracketFound && curEnt )
+		{
+			// get keyvalue
+			KeyValue_t *kv = malloc( sizeof( KeyValue_t ) );
+			int set = 0;
+			int start = -1;
+			int end = -1;
+
+			// loop through line to find quotes
+			for ( int i = 0; i < lineLen + 1; i++ )
+			{
+				if ( line[i] == '"' )
+				{
+					if ( start == -1 ) // first '"'
+					{
+						start = i + 1;
+					}
+					else // second '"'
+					{
+						end = i;
+
+						char *ptr;
+						if ( set == 0 )
+						{
+							// key
+							ptr = kv->key;
+							set = 1;
+						}
+						else
+						{
+							// value
+							ptr = kv->value;
+							set = 2;
+						}
+
+						// slice string
+						int len = strlen( line );
+						int loc = 0;
+						for ( int j = start; j < len; j++ )
+						{
+							if ( j == end )
+							{
+								ptr[loc] = '\0';
+								break;
+							}
+
+							ptr[loc] = line[j];
+							loc++;
+						}
+
+						ptr[loc] = '\0';
+
+						if ( set == 2 )
+						{
+							// finished
+							break;
+						}
+						else if ( set == 1 )
+						{
+							// key set
+							start = -1;
+							end = -1;
+						}
+					}
+				}
+			}
+
+			// add kv to list
+			kvCount++;
+			curEnt->keyValues = realloc( curEnt->keyValues, kvCount * sizeof( KeyValue_t* ) );
+			curEnt->keyValues[kvCount - 1] = kv;
+			curEnt->kvCount = kvCount;
+		}
+
+		// into next
+		cur += lineLen + 1;
+	}
+
+	pMap->entities = ents;
+	pMap->entitiesCount = entCount;
+
+	Spew( "%d entities extracted\n", entCount );
+	return TRUE;
+}
+
+BOOL BSPRand_EntityRandomizer()
+{
+	Spew( "Starting entity randomizer...\n" );
+
+	Map_t *pMap = BSPRand_GetCurrentMap();
+
+	// TODO:
+
+	// test entity manipulation
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( ent )
+		{
+			// this also tests kv creation and such
+			BSPRand_KvSetValue( ent, "targetname", VarArgs( "srcbsprand_test_%d", i ) );
+
+			Vector origin = BSPRand_GetEntOrigin( ent );
+			//QAngle angles = BSPRand_GetEntAngles( ent );
+
+			origin.x += i;
+			origin.y += i;
+			origin.z += i;
+
+			BSPRand_SetEntOrigin( ent, origin );
+
+			//angles.x += i;
+			//angles.y += i;
+			//angles.z += i;
+		}
+	}
+
+	return TRUE;
+}
+
+BOOL BSPRand_BuildEntBuffer()
+{
+	Spew( "Building entity buffer...\n" );
+
+	Map_t *pMap = BSPRand_GetCurrentMap();
+
+	if ( pMap->entitiesBuffer )
+		free( pMap->entitiesBuffer );
+
+	int totalSize = 0;
+	pMap->entitiesBuffer = NULL;
+
+	int cur = -1;
+	for ( int i = 0; i < pMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( !ent )
+			continue;
+
+		// start bracket
+		totalSize += 2;
+		pMap->entitiesBuffer = realloc( pMap->entitiesBuffer, totalSize );
+		pMap->entitiesBuffer[++cur] = '{';
+		pMap->entitiesBuffer[++cur] = '\n';
+
+		for ( int j = 0; j < ent->kvCount; j++ )
+		{
+			KeyValue_t *kv = ent->keyValues[j];
+			if ( !kv )
+				continue;
+
+			char line[256];
+			sprintf_s( line, sizeof( line ), "\"%s\" \"%s\"", kv->key, kv->value );
+
+			totalSize += strlen( line ) + 1;
+			pMap->entitiesBuffer = realloc( pMap->entitiesBuffer, totalSize );
+
+			// append
+			char *dest = &pMap->entitiesBuffer[++cur];
+			const char *src = line;
+			int len = strlen( src );
+
+			while ( len-- )
+			{
+				if ( cur >= totalSize - 1 )
+					break;
+
+				*dest++ = *src++;
+				cur++;
+			}
+
+			pMap->entitiesBuffer[cur] = '\n';
+		}
+
+		// end bracket
+		totalSize += 2;
+		pMap->entitiesBuffer = realloc( pMap->entitiesBuffer, totalSize );
+		pMap->entitiesBuffer[++cur] = '}';
+		pMap->entitiesBuffer[++cur] = '\n';
+	}
+
+	// null terminate
+	totalSize++;
+	pMap->entitiesBuffer = realloc( pMap->entitiesBuffer, totalSize );
+	pMap->entitiesBuffer[++cur] = '\0';
+
+	pMap->entitiesBufferSize = totalSize;
+
+	return TRUE;
+}
+
+/* TODO: Move these */
+const char *BSPRand_KvGetValue( Entity_t *ent, const char *key )
+{
+	if ( ent )
+	{
+		for ( int i = 0; i < ent->kvCount; i++ )
+		{
+			KeyValue_t *kv = ent->keyValues[i];
+			if ( !kv )
+				continue;
+
+			if ( StrEq( kv->key, key ) )
+				return kv->value;
+		}
+	}
+
+	return "";
+}
+
+void BSPRand_KvSetValue( Entity_t *ent, const char *key, const char *value )
+{
+	if ( !ent )
+		return;
+
+	BOOL found = FALSE;
+
+	for ( int i = 0; i < ent->kvCount; i++ )
+	{
+		KeyValue_t *kv = ent->keyValues[i];
+		if ( !kv )
+			continue;
+
+		if ( StrEq( kv->key, key ) )
+		{
+			strncpy( kv->value, value, MAX_VALUE );
+			found = TRUE;
+		}
+	}
+
+	if ( !found )
+	{
+		// not found, create new
+		BSPRand_KvCreate( ent, key, value );
+	}
+}
+
+KeyValue_t *BSPRand_KvCreate( Entity_t *ent, const char *key, const char *value )
+{
+	if ( !ent )
+		return NULL;
+
+	KeyValue_t *kv = malloc( sizeof( KeyValue_t ) );
+	strncpy( kv->key, key, MAX_KEY );
+	strncpy( kv->value, value, MAX_VALUE );
+
+	ent->kvCount++;
+	ent->keyValues = realloc( ent->keyValues, ent->kvCount * sizeof( KeyValue_t* ) );
+	ent->keyValues[ent->kvCount - 1] = kv;
+	return kv;
+}
+
+Vector BSPRand_GetEntOrigin( Entity_t *ent )
+{
+	Vector vec;
+	vec.x = 0;
+	vec.y = 0;
+	vec.z = 0;
+
+	if ( ent )
+	{
+		for ( int i = 0; i < ent->kvCount; i++ )
+		{
+			KeyValue_t *kv = ent->keyValues[i];
+			if ( !kv )
+				continue;
+
+			if ( StrEq( kv->key, "origin" ) )
+			{
+				sscanf( kv->value, "%f %f %f", &vec.x, &vec.y, &vec.z );
+				break;
+			}
+		}
+	}
+
+	return vec;
+}
+
+QAngle BSPRand_GetEntAngles( Entity_t *ent )
+{
+	QAngle ang;
+	ang.x = 0;
+	ang.y = 0;
+	ang.z = 0;
+
+	if ( ent )
+	{
+		for ( int i = 0; i < ent->kvCount; i++ )
+		{
+			KeyValue_t *kv = ent->keyValues[i];
+			if ( !kv )
+				continue;
+
+			if ( StrEq( kv->key, "angles" ) )
+			{
+				sscanf( kv->value, "%f %f %f", &ang.x, &ang.y, &ang.z );
+				break;
+			}
+		}
+	}
+
+	return ang;
+}
+
+void BSPRand_SetEntOrigin( Entity_t *ent, Vector origin )
+{
+	if ( ent )
+	{
+		for ( int i = 0; i < ent->kvCount; i++ )
+		{
+			KeyValue_t *kv = ent->keyValues[i];
+			if ( !kv )
+				continue;
+
+			if ( StrEq( kv->key, "origin" ) )
+			{
+				sprintf_s( kv->value, 256, "%f %f %f", origin.x, origin.y, origin.z );
+				break;
+			}
+		}
+	}
+}
+
+void BSPRand_SetEntAngles( Entity_t *ent, QAngle angles )
+{
+	if ( ent )
+	{
+		for ( int i = 0; i < ent->kvCount; i++ )
+		{
+			KeyValue_t *kv = ent->keyValues[i];
+			if ( !kv )
+				continue;
+
+			if ( StrEq( kv->key, "angles" ) )
+			{
+				sprintf_s( kv->value, 256, "%f %f %f", angles.x, angles.y, angles.z );
+				break;
+			}
+		}
+	}
+}
+/*------------------*/
