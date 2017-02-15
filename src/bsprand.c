@@ -7,8 +7,13 @@ Map_t *pCurrentMap;
 int iTexdataCache[12288];
 char **pszMatNameCache;
 int iMatNameCacheSize;
+
+char **pszSoundNameCache;
+int iSoundNameCacheSize;
+
 int iRandSeed;
 int iLooseMaterialCount;
+int iLooseSoundCount;
 
 int BSPRand_GetRandomSeed() { return iRandSeed; }
 void BSPRand_SetRandomSeed( int seed ) { iRandSeed = seed; }
@@ -25,38 +30,18 @@ BOOL BSPRand_Init()
 	// TODO: go nuts
 
 	iMatNameCacheSize = 0;
+	iSoundNameCacheSize = 0;
 	iLooseMaterialCount = 0;
+	iLooseSoundCount = 0;
 
-	BOOL success = TRUE;
+	BSPRand_BuildResourcesList();
 
 	BSPRand_ChangeHeader();
 
-	if ( !BSPRand_ChangeTextures() )
-		return FALSE;
-
-	BSPRand_ExtractEnts();
-
-	if ( Main_IsVerbose() )
-	{
-		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
-		{
-			Entity_t *ent = pCurrentMap->entities[i];
-			if ( ent )
-			{
-				const char *classname = Entity_GetClassname( ent );
-				Vector origin = Entity_GetOrigin( ent );
-				QAngle angles = Entity_GetAngles( ent );
-
-				Spew( "classname = %s\n", classname );
-				Spew( "origin = %.0f, %.0f, %.0f\n", origin.x, origin.y, origin.z );
-				Spew( "angles = %.0f, %.0f, %.0f\n", angles.x, angles.y, angles.z );
-			}
-		}
-	}
-
 	BSPRand_EntityRandomizer();
 
-	BSPRand_BuildEntBuffer();
+	if ( !BSPRand_TextureRandomizer() )
+		return FALSE;
 
 	return TRUE;
 }
@@ -118,6 +103,12 @@ void BSPRand_Cleanup()
 
 	free( pszMatNameCache );
 	pszMatNameCache = NULL;
+
+	for ( int i = 0; i < iSoundNameCacheSize; i++ )
+		free( pszSoundNameCache[i] );
+
+	free( pszSoundNameCache );
+	pszSoundNameCache = NULL;
 }
 
 void BSPRand_CreateMap()
@@ -153,189 +144,77 @@ void BSPRand_CreateMap()
 	BSPRand_SetCurrentMap( pMap );
 }
 
-void BSPRand_ChangeHeader()
-{
-	Spew( "Changing header...\n" );
-
-	Map_t *map = BSPRand_GetCurrentMap();
-
-	// test manipulate header
-	map->header.mapRevision = 1337;
-}
-
-BOOL BSPRand_ChangeTextures()
-{
-	Spew( "Starting texture randomizer...\n" );
-
-	if ( !BSPRand_BuildTextureList() )
-	{
-		Spew( "FATAL ERROR: ChangeTextures() failed!\n" );
-		return FALSE;
-	}
-	else
-		return BSPRand_TextureRandomizer();
-}
-
-BOOL BSPRand_TextureRandomizer()
+BOOL BSPRand_BuildResourcesList()
 {
 	Map_t *map = BSPRand_GetCurrentMap();
-	BOOL useMatNames = ( iMatNameCacheSize != 0 );
+	BOOL hasGameDir = ( Main_GetGameDir()[0] != 0 );
 
-	if ( useMatNames )
+	if ( hasGameDir )
 	{
-		// recreate the string table from random material names
-		int stringTableSize = map->texdataStringTableCount;
-		StringTableItem_t **stringTable = malloc( stringTableSize * sizeof( StringTableItem_t* ) );
-
-		int totalLen = -1;
-		for ( int i = 0; i < stringTableSize; i++ )
-		{
-			StringTableItem_t *item = malloc( sizeof( StringTableItem_t ) );
-
-			// TODO: need better rand? lol
-			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
-			srand( seed );
-			int iRand = rand() % iMatNameCacheSize;
-
-			// we put random string in here, also fixing up indices
-			item->data = pszMatNameCache[iRand];
-			item->index = totalLen + 1;
-			stringTable[i] = item;
-
-			totalLen += strlen( item->data ) + 1;
-
-			V_Spew( "Adding %s to the string table (idx: %d) (rand: %d)\n", item->data, item->index, iRand );
-		}
-
-		char newStringData[MAX_STRINGDATA];
-		memset( newStringData, 0, sizeof( newStringData ) );
-
-		// now append into the new data
-		int loc = 0;
-		for ( int i = 0; i < stringTableSize; i++ )
-		{
-			StringTableItem_t *item = stringTable[i];
-			if ( !item )
-				continue;
-
-			char *dest = &newStringData[loc];
-			const char *src = item->data;
-			int len = strlen( src );
-
-			while ( len-- )
-			{
-				if ( loc >= MAX_STRINGDATA - 1 )
-					break;
-
-				*dest++ = *src++;
-				loc++;
-			}
-
-			dest[++loc] = 0;
-		}
-
-		// fix up the string table indices
-		for ( int i = 0; i < stringTableSize; i++ )
-		{
-			StringTableItem_t *item = stringTable[i];
-			if ( !item )
-				continue;
-
-			map->texdataStringTable[i] = item->index;
-		}
-
-		// the magic happens here
-		memset( map->texdataStringData, 0, map->texdataStringDataSize );
-		int len = loc;
-		int i = 0;
-		while ( len-- )
-		{
-			char *dest = map->texdataStringData;
-			char *src = newStringData;
-			dest[i] = src[i];
-			i++;
-		}
-
-		// free
-		for ( int i = 0; i < stringTableSize; i++ )
-		{
-			StringTableItem_t *item = stringTable[i];
-			if ( !item )
-				continue;
-
-			free( item );
-		}
-
-		free( stringTable );
-	}
-	else
-	{
-		for ( int i = 0; i < map->textureCount; i++ )
-		{
-			int cachesize = map->textureCount;
-
-			// TODO: need better rand? lol
-			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
-			srand( seed );
-			int iRand = rand() % cachesize;
-
-			int stridx = map->texdataStringTable[map->texinfo[i]->texdata];
-			char *texName = &map->texdataStringData[stridx];
-			if ( iRand < cachesize )
-			{
-				// only replace texdata, changes to another texture inside bsp
-				map->texinfo[i]->texdata = iTexdataCache[iRand];
-				char *texname = &map->texdataStringData[stridx];
-				V_Spew( "RAND: tex.name = %s (%d)\n", texname, iRand );
-			}
-		}
-	}
-
-	Spew( "Textures randomized!\n" );
-	return TRUE;
-}
-
-BOOL BSPRand_BuildTextureList()
-{
-	Map_t *map = BSPRand_GetCurrentMap();
-
-	if ( !Main_BSPTexturesOnly() )
-	{
-		// First scan VPKs
-		Spew( "Scanning VPKs for materials...\n" );
-		BSPRand_VPKTextureScan( Main_GetGameDir() );
+		// First scan VPKs, does both textures and sounds
+		Spew( "Scanning VPKs for resources...\n" );
+		BSPRand_VPKResourceScan( Main_GetGameDir(), !Main_BSPTexturesOnly() );
 
 		// After that, loose files
-		Spew( "Scanning loose material files...\n" );
-		char *materialsDir = "materials\\";
+		Spew( "Scanning loose files for resources...\n" );
 
-		if ( Main_GetGameDir()[0] != 0 )
+		// Loose Textures
+		if ( !Main_BSPTexturesOnly() )
 		{
-			char temp[MAX_PATH*2];
-			sprintf( temp, "%s\\materials", Main_GetGameDir() );
-			materialsDir = temp;
+			char *materialsDir = "materials\\";
+
+			if ( hasGameDir )
+			{
+				char temp[MAX_PATH * 2];
+				sprintf( temp, "%s\\materials", Main_GetGameDir() );
+				materialsDir = temp;
+			}
+
+			BSPRand_RecursiveResourceScan( materialsDir );
+			Spew( "%d loose materials found\n", iLooseMaterialCount );
+
+			// Nothing in the cache? Failed!
+			if ( iMatNameCacheSize == 0 )
+			{
+				Spew( "Texture scan failed, using data inside .bsp instead.\n" );
+
+				for ( int i = 0; i < map->textureCount; i++ )
+				{
+					Texture_t *tex = map->textures[i];
+					iTexdataCache[i] = tex->dataidx;
+				}
+			}
 		}
-
-		BSPRand_RecursiveTextureScan( materialsDir );
-		Spew( "%d loose materials found\n", iLooseMaterialCount );
-
-		// Nothing in the cache? Failed!
-		if ( iMatNameCacheSize == 0 )
+		else
 		{
-			Spew( "Texture scan failed, using data inside .bsp instead.\n" );
+			Spew( "Getting textures from BSP...\n" );
 
+			// push texnames into cache
 			for ( int i = 0; i < map->textureCount; i++ )
 			{
 				Texture_t *tex = map->textures[i];
 				iTexdataCache[i] = tex->dataidx;
 			}
 		}
+
+		// Loose Sounds
+		char *soundDir = "sound\\";
+
+		if ( hasGameDir )
+		{
+			char temp[MAX_PATH * 2];
+			sprintf( temp, "%s\\sound", Main_GetGameDir() );
+			soundDir = temp;
+		}
+
+		BSPRand_RecursiveResourceScan( soundDir );
+		Spew( "%d loose sounds found\n", iLooseMaterialCount );
 	}
 	else
 	{
+		// No game dir, use textures from BSP
 		Spew( "Getting textures from BSP...\n" );
 
-		// push texnames into cache
 		for ( int i = 0; i < map->textureCount; i++ )
 		{
 			Texture_t *tex = map->textures[i];
@@ -346,87 +225,7 @@ BOOL BSPRand_BuildTextureList()
 	return TRUE;
 }
 
-BOOL BSPRand_RecursiveTextureScan( char *current )
-{
-	BOOL success = TRUE;
-
-	char path[512];
-	if ( current[0] )
-		sprintf( path, "%s\\*.*", current );
-	else
-		sprintf( path, "*.*" );
-
-	FixSlashes( path, '\\' );
-
-	// I'm too lazy to install any file system libraries so WinAPI works !FOR NOW!
-	WIN32_FIND_DATA file;
-	HANDLE hFind = FindFirstFileEx( path, FindExInfoStandard, &file, FindExSearchNameMatch, NULL, 0 );
-
-	if ( hFind == INVALID_HANDLE_VALUE )
-	{
-		Spew( "RecursiveTextureScan threw %d, bailing\n", GetLastError() );
-		return FALSE;
-	}
-
-	while ( FindNextFile( hFind, &file ) )
-	{
-		if ( file.cFileName[0] != '.' )
-		{
-			V_Spew( "fileName = %s\n", file.cFileName );
-			if ( file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-			{
-				char nextDir[512];
-				if ( current[0] )
-					sprintf( nextDir, "%s\\%s", current, file.cFileName );
-				else
-					sprintf( nextDir, "%s", file.cFileName );
-
-				success = BSPRand_RecursiveTextureScan( nextDir );
-			}
-			else
-			{
-				char relative[512];
-				if ( current[0] )
-					sprintf( relative, "%s\\%s", current, file.cFileName );
-				else
-					sprintf( relative, "%s", file.cFileName );
-
-				FixSlashes( relative, '\\' );
-
-				// Alloc some for material name, we need to keep it
-				char *matName = malloc( 512 );
-				strncpy( matName, relative, sizeof( relative ) );
-
-				// If it's not vmt bail out
-				if ( !StrEq( GetFileExtension( matName ), "vmt" ) )
-				{
-					free( matName );
-					continue;
-				}
-
-				// Strip file extension
-				StripExtension( matName, matName, sizeof( matName ) );
-
-				// Strip directories from front to mimic the Source filesystem
-				const char *matDir = "materials\\";
-				strncpy( matName, strstr( matName, matDir ), 512 );
-				strncpy( matName, matName + strlen( matDir ), 512 );
-
-				pszMatNameCache = realloc( pszMatNameCache, ( iMatNameCacheSize + 1 ) * sizeof( char* ) );
-				pszMatNameCache[iMatNameCacheSize] = matName;
-				iMatNameCacheSize = iMatNameCacheSize;
-				iMatNameCacheSize++;
-
-				iLooseMaterialCount++;
-			}
-		}
-	}
-
-	FindClose( hFind );
-	return success;
-}
-
-BOOL BSPRand_VPKTextureScan( char *dir )
+BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
 {
 	char path[512];
 	sprintf( path, "%s\\*.*", dir );
@@ -446,6 +245,7 @@ BOOL BSPRand_VPKTextureScan( char *dir )
 		if ( file.cFileName[0] != '.' && extension && StrEq( extension, "vpk" ) )
 		{
 			int matCount = 0;
+			int soundCount = 0;
 
 			char relative[512];
 			if ( dir[0] )
@@ -487,28 +287,50 @@ BOOL BSPRand_VPKTextureScan( char *dir )
 						if ( !filename || StrEq( filename, "" ) )
 							break;
 
-						char matName[512];
-						sprintf( matName, "%s\\%s", path, filename );
+						char fileName[512];
+						sprintf( fileName, "%s/%s", path, filename );
 
-						if ( StrContains( matName, "materials\\" ) || StrContains( matName, "materials/" ) )
+						if ( StrContains( fileName, "materials/" ) )
 						{
 							// Strip first dir
 							char *finalMatName = malloc( 512 );
-							for ( size_t i = 0; i < strlen( matName ); i++ )
+							for ( size_t i = 0; i < strlen( fileName ); i++ )
 							{
-								if ( PATHSEPARATOR( matName[i] ) )
+								if ( PATHSEPARATOR( fileName[i] ) )
 								{
-									strncpy( finalMatName, &matName[i + 1], 512 );
+									strncpy( finalMatName, &fileName[i + 1], 512 );
 									break;
 								}
 							}
 
 							pszMatNameCache = realloc( pszMatNameCache, ( iMatNameCacheSize + 1 ) * sizeof( char* ) );
 							pszMatNameCache[iMatNameCacheSize] = finalMatName;
-							iMatNameCacheSize = iMatNameCacheSize;
 							iMatNameCacheSize++;
 
 							matCount++;
+						}
+						else if ( StrContains( fileName, "sound/" ) )
+						{
+							// ditto
+							char *finalSoundName = malloc( 512 );
+							for ( size_t i = 0; i < strlen( fileName ); i++ )
+							{
+								if ( PATHSEPARATOR( fileName[i] ) )
+								{
+									strncpy( finalSoundName, &fileName[i + 1], 512 );
+									break;
+								}
+							}
+
+							// Add the extension
+							strncat( finalSoundName, ".", 1 );
+							strncat( finalSoundName, extension, strlen( extension ) );
+
+							pszSoundNameCache = realloc( pszSoundNameCache, ( iSoundNameCacheSize + 1 ) * sizeof( char* ) );
+							pszSoundNameCache[iSoundNameCacheSize] = finalSoundName;
+							iSoundNameCacheSize++;
+
+							soundCount++;
 						}
 
 						VPKDirectoryEntry dirEntry;
@@ -532,10 +354,198 @@ BOOL BSPRand_VPKTextureScan( char *dir )
 			}
 
 			Spew( "%s: %d materials found\n", file.cFileName, matCount );
+			Spew( "%s: %d sounds found\n", file.cFileName, soundCount );
 		}
 	}
 
 	FindClose( hFind );
+	return TRUE;
+}
+
+BOOL BSPRand_RecursiveResourceScan( char *current )
+{
+	BOOL success = TRUE;
+
+	char path[512];
+	if ( current[0] )
+		sprintf( path, "%s\\*.*", current );
+	else
+		sprintf( path, "*.*" );
+
+	FixSlashes( path, '\\' );
+
+	// I'm too lazy to install any file system libraries so WinAPI works !FOR NOW!
+	WIN32_FIND_DATA file;
+	HANDLE hFind = FindFirstFileEx( path, FindExInfoStandard, &file, FindExSearchNameMatch, NULL, 0 );
+
+	if ( hFind == INVALID_HANDLE_VALUE )
+	{
+		Spew( "RecursiveTextureScan threw %d, bailing\n", GetLastError() );
+		return FALSE;
+	}
+
+	while ( FindNextFile( hFind, &file ) )
+	{
+		if ( file.cFileName[0] != '.' )
+		{
+			V_Spew( "fileName = %s\n", file.cFileName );
+			if ( file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				char nextDir[512];
+				if ( current[0] )
+					sprintf( nextDir, "%s\\%s", current, file.cFileName );
+				else
+					sprintf( nextDir, "%s", file.cFileName );
+
+				success = BSPRand_RecursiveResourceScan( nextDir );
+			}
+			else
+			{
+				char relative[512];
+				if ( current[0] )
+					sprintf( relative, "%s\\%s", current, file.cFileName );
+				else
+					sprintf( relative, "%s", file.cFileName );
+
+				FixSlashes( relative, '\\' );
+
+				// If it's not vmt or sound file bail out
+				const char *extension = GetFileExtension( file.cFileName );
+				if ( !StrEq( extension, "vmt" ) ||
+					!StrEq( extension, "wav" ) ||
+					!StrEq( extension, "mp3" ) )
+				{
+					continue;
+				}
+
+				// Alloc some for the name, we need to keep it
+				char *fileName = malloc( 512 );
+				strncpy( fileName, relative, sizeof( relative ) );
+
+				// Strip file extension
+				StripExtension( fileName, fileName, sizeof( fileName ) );
+
+				// Strip directories from front to mimic the Source filesystem
+				if ( StrEq( extension, "vmt" ) )
+				{
+					const char *matDir = "materials\\";
+					strncpy( fileName, strstr( fileName, matDir ), 512 );
+					strncpy( fileName, fileName + strlen( matDir ), 512 );
+
+					pszMatNameCache = realloc( pszMatNameCache, ( iMatNameCacheSize + 1 ) * sizeof( char* ) );
+					pszMatNameCache[iMatNameCacheSize] = fileName;
+					iMatNameCacheSize++;
+
+					iLooseMaterialCount++;
+				}
+				else if ( StrEq( extension, "wav" ) || StrEq( extension, "mp3" ) )
+				{
+					const char *soundDir = "sound\\";
+					strncpy( fileName, strstr( fileName, soundDir ), 512 );
+					strncpy( fileName, fileName + strlen( soundDir ), 512 );
+
+					pszSoundNameCache = realloc( pszSoundNameCache, ( iSoundNameCacheSize + 1 ) * sizeof( char* ) );
+					pszSoundNameCache[iSoundNameCacheSize] = fileName;
+					iSoundNameCacheSize++;
+
+					iLooseSoundCount++;
+				}
+			}
+		}
+	}
+
+	FindClose( hFind );
+	return success;
+}
+
+void BSPRand_ChangeHeader()
+{
+	Spew( "Changing header...\n" );
+
+	Map_t *map = BSPRand_GetCurrentMap();
+
+	// test manipulate header
+	map->header.mapRevision = 1337;
+}
+
+BOOL BSPRand_EntityRandomizer()
+{
+	Spew( "Starting entity randomizer...\n" );
+
+	Map_t *pMap = BSPRand_GetCurrentMap();
+
+	BSPRand_ExtractEnts();
+
+	if ( Main_IsVerbose() )
+	{
+		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+		{
+			Entity_t *ent = pCurrentMap->entities[i];
+			if ( ent )
+			{
+				const char *classname = Entity_GetClassname( ent );
+				Vector origin = Entity_GetOrigin( ent );
+				QAngle angles = Entity_GetAngles( ent );
+
+				Spew( "classname = %s\n", classname );
+				Spew( "origin = %.0f, %.0f, %.0f\n", origin.x, origin.y, origin.z );
+				Spew( "angles = %.0f, %.0f, %.0f\n", angles.x, angles.y, angles.z );
+			}
+		}
+	}
+
+	// TODO:
+
+	// test entity manipulation
+	/*
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( ent )
+		{
+			// this also tests kv creation and such
+			Entity_KvSetValue( ent, "targetname", VarArgs( "srcbsprand_test_%d", i ) );
+
+			Vector origin = Entity_GetOrigin( ent );
+			//QAngle angles = Entity_GetAngles( ent );
+
+			origin.x += i;
+			origin.y += i;
+			origin.z += i;
+
+			Entity_SetOrigin( ent, origin );
+
+			//angles.x += i;
+			//angles.y += i;
+			//angles.z += i;
+		}
+	}
+	*/
+
+	// Randomize sounds (ambient_generic)
+	Spew( "Randomizing sounds...\n" );
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( !ent )
+			continue;
+
+		if ( StrEq( Entity_GetClassname( ent ), "ambient_generic" ) ||
+			StrEq( Entity_GetClassname( ent ), "ambient_fmod" ) ) // PVK2 has these :)
+		{
+			// TODO: need better rand? lol
+			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
+			srand( seed );
+			int iRand = rand() % iSoundNameCacheSize;
+
+			const char *randSound = pszSoundNameCache[iRand];
+			Entity_KvSetValue( ent, "message", randSound );
+		}
+	}
+
+	BSPRand_BuildEntBuffer();
+
+	Spew( "Entities randomized!\n" );
 	return TRUE;
 }
 
@@ -680,41 +690,6 @@ BOOL BSPRand_ExtractEnts()
 	return TRUE;
 }
 
-BOOL BSPRand_EntityRandomizer()
-{
-	Spew( "Starting entity randomizer...\n" );
-
-	Map_t *pMap = BSPRand_GetCurrentMap();
-
-	// TODO:
-
-	// test entity manipulation
-	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
-	{
-		Entity_t *ent = pCurrentMap->entities[i];
-		if ( ent )
-		{
-			// this also tests kv creation and such
-			Entity_KvSetValue( ent, "targetname", VarArgs( "srcbsprand_test_%d", i ) );
-
-			Vector origin = Entity_GetOrigin( ent );
-			//QAngle angles = Entity_GetAngles( ent );
-
-			origin.x += i;
-			origin.y += i;
-			origin.z += i;
-
-			Entity_SetOrigin( ent, origin );
-
-			//angles.x += i;
-			//angles.y += i;
-			//angles.z += i;
-		}
-	}
-
-	return TRUE;
-}
-
 BOOL BSPRand_BuildEntBuffer()
 {
 	Spew( "Building entity buffer...\n" );
@@ -783,5 +758,125 @@ BOOL BSPRand_BuildEntBuffer()
 
 	pMap->entitiesBufferSize = totalSize;
 
+	return TRUE;
+}
+
+BOOL BSPRand_TextureRandomizer()
+{
+	Spew( "Starting texture randomizer...\n" );
+
+	Map_t *map = BSPRand_GetCurrentMap();
+
+	if ( iMatNameCacheSize != 0 && !Main_BSPTexturesOnly() )
+	{
+		// recreate the string table from random material names
+		int stringTableSize = map->texdataStringTableCount;
+		StringTableItem_t **stringTable = malloc( stringTableSize * sizeof( StringTableItem_t* ) );
+
+		int totalLen = -1;
+		for ( int i = 0; i < stringTableSize; i++ )
+		{
+			StringTableItem_t *item = malloc( sizeof( StringTableItem_t ) );
+
+			// TODO: need better rand? lol
+			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
+			srand( seed );
+			int iRand = rand() % iMatNameCacheSize;
+
+			// we put random string in here, also fixing up indices
+			item->data = pszMatNameCache[iRand];
+			item->index = totalLen + 1;
+			stringTable[i] = item;
+
+			totalLen += strlen( item->data ) + 1;
+
+			V_Spew( "Adding %s to the string table (idx: %d) (rand: %d)\n", item->data, item->index, iRand );
+		}
+
+		char newStringData[MAX_STRINGDATA];
+		memset( newStringData, 0, sizeof( newStringData ) );
+
+		// now append into the new data
+		int loc = 0;
+		for ( int i = 0; i < stringTableSize; i++ )
+		{
+			StringTableItem_t *item = stringTable[i];
+			if ( !item )
+				continue;
+
+			char *dest = &newStringData[loc];
+			const char *src = item->data;
+			int len = strlen( src );
+
+			while ( len-- )
+			{
+				if ( loc >= MAX_STRINGDATA - 1 )
+					break;
+
+				*dest++ = *src++;
+				loc++;
+			}
+
+			dest[++loc] = 0;
+		}
+
+		// fix up the string table indices
+		for ( int i = 0; i < stringTableSize; i++ )
+		{
+			StringTableItem_t *item = stringTable[i];
+			if ( !item )
+				continue;
+
+			map->texdataStringTable[i] = item->index;
+		}
+
+		// the magic happens here
+		memset( map->texdataStringData, 0, map->texdataStringDataSize );
+		int len = loc;
+		int i = 0;
+		while ( len-- )
+		{
+			char *dest = map->texdataStringData;
+			char *src = newStringData;
+			dest[i] = src[i];
+			i++;
+		}
+
+		// free
+		for ( int i = 0; i < stringTableSize; i++ )
+		{
+			StringTableItem_t *item = stringTable[i];
+			if ( !item )
+				continue;
+
+			free( item );
+		}
+
+		free( stringTable );
+	}
+	else
+	{
+		for ( int i = 0; i < map->textureCount; i++ )
+		{
+			int cachesize = map->textureCount;
+
+			// TODO: need better rand? lol
+			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
+			srand( seed );
+			int iRand = rand() % cachesize;
+
+			int stridx = map->texdataStringTable[map->texinfo[i]->texdata];
+			char *texName = &map->texdataStringData[stridx];
+			if ( iRand < cachesize )
+			{
+				// only replace texdata, changes to another texture inside bsp
+				map->texinfo[i]->texdata = iTexdataCache[iRand];
+				char *texname = &map->texdataStringData[stridx];
+				V_Spew( "RAND: tex.name = %s (%d)\n", texname, iRand );
+			}
+		}
+	}
+
+	Spew( "Textures randomized!\n" );
 	return TRUE;
 }

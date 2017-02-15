@@ -71,7 +71,6 @@ void BSPRand_ChangeHeader();
 BOOL BSPRand_ChangeTextures();
 void BSPRand_ChangeModels();
 
-BOOL BSPRand_BuildTextureList();
 BOOL BSPRand_TextureRandomizer();
 
 BOOL BSPRand_ExtractEnts();
@@ -86,7 +85,8 @@ void BSPRand_SetRandomSeed( int seed );
 Map_t *BSPRand_GetCurrentMap();
 void BSPRand_SetCurrentMap( Map_t *map );
 
-BOOL BSPRand_RecursiveTextureScan( char *current );
-BOOL BSPRand_VPKTextureScan( char *dir );
+BOOL BSPRand_BuildResourcesList();
+BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials );
+BOOL BSPRand_RecursiveResourceScan( char *current );
 
 #endif
