@@ -49,3 +49,17 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+
+*.log
+*.tlog
+*.opensdf
+*.suo
+*.sdf
+*.bsp
+entitylist.txt
+entitylist_in.txt
+entitylist_out.txt
+strtable_in.txt
+strtable_out.txt
+texlist.txt
