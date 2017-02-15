@@ -43,9 +43,9 @@ BOOL BSPRand_Init()
 			Entity_t *ent = pCurrentMap->entities[i];
 			if ( ent )
 			{
-				const char *classname = BSPRand_KvGetValue( ent, "classname" );
-				Vector origin = BSPRand_GetEntOrigin( ent );
-				QAngle angles = BSPRand_GetEntAngles( ent );
+				const char *classname = Entity_GetClassname( ent );
+				Vector origin = Entity_GetOrigin( ent );
+				QAngle angles = Entity_GetAngles( ent );
 
 				Spew( "classname = %s\n", classname );
 				Spew( "origin = %.0f, %.0f, %.0f\n", origin.x, origin.y, origin.z );
@@ -695,16 +695,16 @@ BOOL BSPRand_EntityRandomizer()
 		if ( ent )
 		{
 			// this also tests kv creation and such
-			BSPRand_KvSetValue( ent, "targetname", VarArgs( "srcbsprand_test_%d", i ) );
+			Entity_KvSetValue( ent, "targetname", VarArgs( "srcbsprand_test_%d", i ) );
 
-			Vector origin = BSPRand_GetEntOrigin( ent );
-			//QAngle angles = BSPRand_GetEntAngles( ent );
+			Vector origin = Entity_GetOrigin( ent );
+			//QAngle angles = Entity_GetAngles( ent );
 
 			origin.x += i;
 			origin.y += i;
 			origin.z += i;
 
-			BSPRand_SetEntOrigin( ent, origin );
+			Entity_SetOrigin( ent, origin );
 
 			//angles.x += i;
 			//angles.y += i;
@@ -785,155 +785,3 @@ BOOL BSPRand_BuildEntBuffer()
 
 	return TRUE;
 }
-
-/* TODO: Move these */
-const char *BSPRand_KvGetValue( Entity_t *ent, const char *key )
-{
-	if ( ent )
-	{
-		for ( int i = 0; i < ent->kvCount; i++ )
-		{
-			KeyValue_t *kv = ent->keyValues[i];
-			if ( !kv )
-				continue;
-
-			if ( StrEq( kv->key, key ) )
-				return kv->value;
-		}
-	}
-
-	return "";
-}
-
-void BSPRand_KvSetValue( Entity_t *ent, const char *key, const char *value )
-{
-	if ( !ent )
-		return;
-
-	BOOL found = FALSE;
-
-	for ( int i = 0; i < ent->kvCount; i++ )
-	{
-		KeyValue_t *kv = ent->keyValues[i];
-		if ( !kv )
-			continue;
-
-		if ( StrEq( kv->key, key ) )
-		{
-			strncpy( kv->value, value, MAX_VALUE );
-			found = TRUE;
-		}
-	}
-
-	if ( !found )
-	{
-		// not found, create new
-		BSPRand_KvCreate( ent, key, value );
-	}
-}
-
-KeyValue_t *BSPRand_KvCreate( Entity_t *ent, const char *key, const char *value )
-{
-	if ( !ent )
-		return NULL;
-
-	KeyValue_t *kv = malloc( sizeof( KeyValue_t ) );
-	strncpy( kv->key, key, MAX_KEY );
-	strncpy( kv->value, value, MAX_VALUE );
-
-	ent->kvCount++;
-	ent->keyValues = realloc( ent->keyValues, ent->kvCount * sizeof( KeyValue_t* ) );
-	ent->keyValues[ent->kvCount - 1] = kv;
-	return kv;
-}
-
-Vector BSPRand_GetEntOrigin( Entity_t *ent )
-{
-	Vector vec;
-	vec.x = 0;
-	vec.y = 0;
-	vec.z = 0;
-
-	if ( ent )
-	{
-		for ( int i = 0; i < ent->kvCount; i++ )
-		{
-			KeyValue_t *kv = ent->keyValues[i];
-			if ( !kv )
-				continue;
-
-			if ( StrEq( kv->key, "origin" ) )
-			{
-				sscanf( kv->value, "%f %f %f", &vec.x, &vec.y, &vec.z );
-				break;
-			}
-		}
-	}
-
-	return vec;
-}
-
-QAngle BSPRand_GetEntAngles( Entity_t *ent )
-{
-	QAngle ang;
-	ang.x = 0;
-	ang.y = 0;
-	ang.z = 0;
-
-	if ( ent )
-	{
-		for ( int i = 0; i < ent->kvCount; i++ )
-		{
-			KeyValue_t *kv = ent->keyValues[i];
-			if ( !kv )
-				continue;
-
-			if ( StrEq( kv->key, "angles" ) )
-			{
-				sscanf( kv->value, "%f %f %f", &ang.x, &ang.y, &ang.z );
-				break;
-			}
-		}
-	}
-
-	return ang;
-}
-
-void BSPRand_SetEntOrigin( Entity_t *ent, Vector origin )
-{
-	if ( ent )
-	{
-		for ( int i = 0; i < ent->kvCount; i++ )
-		{
-			KeyValue_t *kv = ent->keyValues[i];
-			if ( !kv )
-				continue;
-
-			if ( StrEq( kv->key, "origin" ) )
-			{
-				sprintf_s( kv->value, 256, "%f %f %f", origin.x, origin.y, origin.z );
-				break;
-			}
-		}
-	}
-}
-
-void BSPRand_SetEntAngles( Entity_t *ent, QAngle angles )
-{
-	if ( ent )
-	{
-		for ( int i = 0; i < ent->kvCount; i++ )
-		{
-			KeyValue_t *kv = ent->keyValues[i];
-			if ( !kv )
-				continue;
-
-			if ( StrEq( kv->key, "angles" ) )
-			{
-				sprintf_s( kv->value, 256, "%f %f %f", angles.x, angles.y, angles.z );
-				break;
-			}
-		}
-	}
-}
-/*------------------*/

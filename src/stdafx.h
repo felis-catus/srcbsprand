@@ -27,6 +27,7 @@
 #include "main.h"
 #include "util.h"
 #include "bsp.h"
+#include "entity.h"
 #include "bsprand.h"
 #include "file.h"
 #include "vpk.h"

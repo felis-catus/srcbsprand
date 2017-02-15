@@ -18,14 +18,6 @@ typedef struct
 	char *data;
 } StringTableItem_t;
 
-// Single entity, not the buffer!
-typedef struct
-{
-	//char *classname;
-	KeyValue_t **keyValues;
-	int kvCount;
-} Entity_t;
-
 // The loaded map
 typedef struct
 {
@@ -85,18 +77,6 @@ BOOL BSPRand_TextureRandomizer();
 BOOL BSPRand_ExtractEnts();
 BOOL BSPRand_EntityRandomizer();
 BOOL BSPRand_BuildEntBuffer();
-
-/* TODO: Move these */
-const char *BSPRand_KvGetValue( Entity_t *ent, const char *key );
-void BSPRand_KvSetValue( Entity_t *ent, const char *key, const char *value );
-KeyValue_t *BSPRand_KvCreate( Entity_t *ent, const char *key, const char *value );
-
-Vector BSPRand_GetEntOrigin( Entity_t *ent );
-QAngle BSPRand_GetEntAngles( Entity_t *ent );
-
-void BSPRand_SetEntOrigin( Entity_t *ent, Vector origin );
-void BSPRand_SetEntAngles( Entity_t *ent, QAngle angles );
-/*------------------*/
 
 void BSPRand_ClearCaches();
 
