@@ -70,6 +70,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bsprand.c" />
+    <ClCompile Include="entity.c" />
     <ClCompile Include="file.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="stdafx.c" />
@@ -79,6 +80,7 @@
   <ItemGroup>
     <ClInclude Include="bsp.h" />
     <ClInclude Include="bsprand.h" />
+    <ClInclude Include="entity.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="resource.h" />
