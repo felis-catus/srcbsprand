@@ -8,11 +8,21 @@ int iTexdataCache[12288];
 char **pszMatNameCache;
 int iMatNameCacheSize;
 
+char **pszModelNameCache;
+int iModelNameCacheSize;
+
+// Models with propdata needs to be in separate array to prevent crashes
+// TODO:
+//char **pszPropModelNameCache;
+//int iPropModelNameCacheSize;
+
 char **pszSoundNameCache;
 int iSoundNameCacheSize;
 
 int iRandSeed;
+
 int iLooseMaterialCount;
+int iLooseModelCount;
 int iLooseSoundCount;
 
 int BSPRand_GetRandomSeed() { return iRandSeed; }
@@ -30,8 +40,11 @@ BOOL BSPRand_Init()
 	// TODO: go nuts
 
 	iMatNameCacheSize = 0;
+	iModelNameCacheSize = 0;
+	//iPropModelNameCacheSize = 0;
 	iSoundNameCacheSize = 0;
 	iLooseMaterialCount = 0;
+	iLooseModelCount = 0;
 	iLooseSoundCount = 0;
 
 	BSPRand_BuildResourcesList();
@@ -97,12 +110,18 @@ void BSPRand_Cleanup()
 		BSPRand_SetCurrentMap( NULL );
 	}
 
-	// free cache
+	// free caches
 	for ( int i = 0; i < iMatNameCacheSize; i++ )
 		free( pszMatNameCache[i] );
 
 	free( pszMatNameCache );
 	pszMatNameCache = NULL;
+
+	for ( int i = 0; i < iModelNameCacheSize; i++ )
+		free( pszModelNameCache[i] );
+
+	free( pszModelNameCache );
+	pszModelNameCache = NULL;
 
 	for ( int i = 0; i < iSoundNameCacheSize; i++ )
 		free( pszSoundNameCache[i] );
@@ -245,6 +264,7 @@ BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
 		if ( file.cFileName[0] != '.' && extension && StrEq( extension, "vpk" ) )
 		{
 			int matCount = 0;
+			int modelCount = 0;
 			int soundCount = 0;
 
 			char relative[512];
@@ -290,6 +310,7 @@ BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
 						char fileName[512];
 						sprintf( fileName, "%s/%s", path, filename );
 
+						// TODO: Cleanup
 						if ( StrContains( fileName, "materials/" ) )
 						{
 							// Strip first dir
@@ -309,6 +330,20 @@ BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
 
 							matCount++;
 						}
+						else if ( StrContains( fileName, "models/" ) && StrEq( extension, "mdl" ) )
+						{
+							char *finalModelName = malloc( 512 );
+							strncpy( finalModelName, fileName, 512 );
+
+							strncat( finalModelName, ".", 1 );
+							strncat( finalModelName, extension, strlen( extension ) );
+
+							pszModelNameCache = realloc( pszModelNameCache, ( iModelNameCacheSize + 1 ) * sizeof( char* ) );
+							pszModelNameCache[iModelNameCacheSize] = finalModelName;
+							iModelNameCacheSize++;
+
+							modelCount++;
+						}
 						else if ( StrContains( fileName, "sound/" ) )
 						{
 							// ditto
@@ -322,7 +357,6 @@ BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
 								}
 							}
 
-							// Add the extension
 							strncat( finalSoundName, ".", 1 );
 							strncat( finalSoundName, extension, strlen( extension ) );
 
@@ -354,6 +388,7 @@ BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
 			}
 
 			Spew( "%s: %d materials found\n", file.cFileName, matCount );
+			Spew( "%s: %d models found\n", file.cFileName, modelCount );
 			Spew( "%s: %d sounds found\n", file.cFileName, soundCount );
 		}
 	}
@@ -409,9 +444,10 @@ BOOL BSPRand_RecursiveResourceScan( char *current )
 
 				FixSlashes( relative, '\\' );
 
-				// If it's not vmt or sound file bail out
+				// If it's not a file we want bail out
 				const char *extension = GetFileExtension( file.cFileName );
 				if ( !StrEq( extension, "vmt" ) ||
+					!StrEq( extension, "mdl" ) ||
 					!StrEq( extension, "wav" ) ||
 					!StrEq( extension, "mp3" ) )
 				{
@@ -437,6 +473,18 @@ BOOL BSPRand_RecursiveResourceScan( char *current )
 					iMatNameCacheSize++;
 
 					iLooseMaterialCount++;
+				}
+				else if ( StrEq( extension, "mdl" ) )
+				{
+					const char *modelDir = "models\\";
+					strncpy( fileName, strstr( fileName, modelDir ), 512 );
+					strncpy( fileName, fileName + strlen( modelDir ), 512 );
+
+					pszModelNameCache = realloc( pszModelNameCache, ( iModelNameCacheSize + 1 ) * sizeof( char* ) );
+					pszModelNameCache[iModelNameCacheSize] = fileName;
+					iModelNameCacheSize++;
+
+					iLooseModelCount++;
 				}
 				else if ( StrEq( extension, "wav" ) || StrEq( extension, "mp3" ) )
 				{
@@ -522,24 +570,77 @@ BOOL BSPRand_EntityRandomizer()
 	}
 	*/
 
-	// Randomize sounds (ambient_generic)
-	Spew( "Randomizing sounds...\n" );
+	// Randomize models
+	Spew( "Randomizing models...\n" );
 	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
 	{
 		Entity_t *ent = pCurrentMap->entities[i];
 		if ( !ent )
 			continue;
 
-		if ( StrEq( Entity_GetClassname( ent ), "ambient_generic" ) ||
-			StrEq( Entity_GetClassname( ent ), "ambient_fmod" ) ) // PVK2 has these :)
+		// All props
+		const char *classname = Entity_GetClassname( ent );
+		if ( StrContains( classname, "prop_" ) )
 		{
+			const char *model = Entity_KvGetValue( ent, "model" );
+			if ( model[0] == '*' )
+			{
+				// Brush model, ignore for now
+				continue;
+			}
+
+			// TODO: Physics props, need to be in separate array to prevent crashes
+			if ( StrContains( classname, "prop_physics" ) )
+				continue;
+
 			// TODO: need better rand? lol
 			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
 			srand( seed );
-			int iRand = rand() % iSoundNameCacheSize;
 
-			const char *randSound = pszSoundNameCache[iRand];
-			Entity_KvSetValue( ent, "message", randSound );
+			int iRand;
+			const char *randModel;
+			/*if ( StrContains( classname, "prop_physics" ) )
+			{
+				if ( iPropModelNameCacheSize == 0 )
+					continue;
+
+				iRand = rand() % iModelNameCacheSize;
+				randModel = pszPropModelNameCache[iRand];
+			}
+			else
+			{*/
+				if ( iModelNameCacheSize == 0 )
+					continue;
+
+				iRand = rand() % iModelNameCacheSize;
+				randModel = pszModelNameCache[iRand];
+			//}
+
+			Entity_KvSetValue( ent, "model", randModel );
+		}
+	}
+
+	// Randomize sounds (ambient_generic)
+	Spew( "Randomizing sounds...\n" );
+	if ( iSoundNameCacheSize != 0 )
+	{
+		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+		{
+			Entity_t *ent = pCurrentMap->entities[i];
+			if ( !ent )
+				continue;
+
+			if ( StrEq( Entity_GetClassname( ent ), "ambient_generic" ) ||
+				StrEq( Entity_GetClassname( ent ), "ambient_fmod" ) ) // PVK2 has these :)
+			{
+				// TODO: need better rand? lol
+				int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
+				srand( seed );
+				int iRand = rand() % iSoundNameCacheSize;
+
+				const char *randSound = pszSoundNameCache[iRand];
+				Entity_KvSetValue( ent, "message", randSound );
+			}
 		}
 	}
 
