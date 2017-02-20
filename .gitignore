@@ -50,12 +50,13 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-
+# srcbsprand specific
 *.log
 *.tlog
 *.opensdf
 *.suo
 *.sdf
+*.vcxproj.user
 *.bsp
 entitylist.txt
 entitylist_in.txt
@@ -63,3 +64,4 @@ entitylist_out.txt
 strtable_in.txt
 strtable_out.txt
 texlist.txt
+bin/Debug/srcbsprand.exe
