@@ -671,6 +671,24 @@ BOOL BSPRand_EntityRandomizer()
 		}
 	}
 
+	// Randomize rotating brushes (func_rotating)
+	Spew( "Randomizing rotating brushes...\n" );
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( !ent || !StrEq( Entity_GetClassname( ent ), "func_rotating" ) )
+			continue;
+
+		int rotationSpeed = rand() % 10000 + 1;
+		int friction = rand() % 100 + 1;
+		const char *sound = BSPRand_GetRandomSound();
+		int volume = rand() % 10 + 1;
+
+		Entity_KvSetInt( ent, "maxspeed", rotationSpeed );
+		Entity_KvSetInt( ent, "fanfriction", friction );
+		Entity_KvSetString( ent, "message", sound );
+		Entity_KvSetInt( ent, "volume", volume );
+	}
 	BSPRand_BuildEntBuffer();
 
 	Spew( "Entities randomized!\n" );
