@@ -705,15 +705,67 @@ BOOL BSPRand_EntityRandomizer()
 			"npc_zombie",
 		};
 
+		// For generic/cycler actors
+		const char *szHL2ActorModelList[11] =
+		{
+			"models/alyx.mdl",
+			"models/barney.mdl",
+			"models/breen.mdl",
+			"models/combine_soldier.mdl",
+			"models/eli.mdl",
+			"models/gman.mdl",
+			"models/kleiner.mdl",
+			"models/mossman.mdl",
+			"models/odessa.mdl",
+			"models/police.mdl",
+			"models/vortigaunt.mdl"
+		};
+
+		// Story protected NPCs won't be randomized by default
+		const char *szHL2StoryProtectedNPCs[10] =
+		{
+			"npc_alyx",
+			"npc_barney",
+			"npc_breen",
+			"npc_citizen",
+			"npc_dog",
+			"npc_eli",
+			"npc_gman",
+			"npc_kleiner",
+			"npc_monk",
+			"npc_mossman"
+		};
+
 		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
 		{
 			Entity_t *ent = pCurrentMap->entities[i];
-			if ( !ent || !StrContains( Entity_GetClassname( ent ), "npc_" ) )
+			if ( !ent )
 				continue;
 
-			int iRand = rand() % 32;
-			const char *randNPC = szHL2NPCList[iRand];
-			Entity_KvSetString( ent, "classname", randNPC );
+			if ( StrContains( Entity_GetClassname( ent ), "npc_" ) )
+			{
+				BOOL canRandomize = TRUE;
+				for ( int i = 0; i < 10; i++ )
+				{
+					// Story protected?
+					if ( StrEq( Entity_GetClassname( ent ), szHL2StoryProtectedNPCs[i] ) )
+						canRandomize = FALSE;
+				}
+
+				if ( canRandomize )
+				{
+					int iRand = rand() % 32;
+					const char *randNPC = szHL2NPCList[iRand];
+					Entity_KvSetString( ent, "classname", randNPC );
+				}
+			}
+			else if ( StrEq( Entity_GetClassname( ent ), "generic_actor" ) ||
+				StrEq( Entity_GetClassname( ent ), "cycler_actor" ) )
+			{
+				int iRand = rand() % 11;
+				const char *randModel = szHL2ActorModelList[iRand];
+				Entity_KvSetString( ent, "model", randModel );
+			}
 		}
 	}
 
