@@ -86,7 +86,7 @@ Map_t *BSPRand_GetCurrentMap();
 void BSPRand_SetCurrentMap( Map_t *map );
 
 BOOL BSPRand_BuildResourcesList();
-BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials );
+BOOL BSPRand_VPKResourceScan( const char *dir, BOOL allowMaterials );
 BOOL BSPRand_RecursiveResourceScan( char *current );
 
 const char *BSPRand_GetRandomMaterial();

@@ -4,7 +4,7 @@
 void Spew( const char *format, ... )
 {
 	va_list	argptr;
-	static char	string[1024];
+	char string[1024];
 
 	va_start( argptr, format );
 	vsnprintf_s( string, 1024, 1024, format, argptr );
@@ -17,7 +17,7 @@ void Spew( const char *format, ... )
 void WSpew( wchar_t *format, ... )
 {
 	va_list	argptr;
-	static wchar_t string[1024];
+	wchar_t string[1024];
 
 	va_start( argptr, format );
 	vwprintf_s( string, argptr );
@@ -34,7 +34,7 @@ void V_Spew( const char *format, ... )
 		return;
 
 	va_list	argptr;
-	static char	string[1024];
+	char string[1024];
 
 	va_start( argptr, format );
 	vsnprintf_s( string, 1024, 1024, format, argptr );
@@ -50,7 +50,7 @@ void V_WSpew( wchar_t *format, ... )
 		return;
 
 	va_list	argptr;
-	static wchar_t string[1024];
+	wchar_t string[1024];
 
 	va_start( argptr, format );
 	vwprintf_s( string, argptr );

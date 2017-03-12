@@ -248,7 +248,7 @@ BOOL BSPRand_BuildResourcesList()
 	return TRUE;
 }
 
-BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials )
+BOOL BSPRand_VPKResourceScan( const char *dir, BOOL allowMaterials )
 {
 	char path[512];
 	sprintf( path, "%s\\*.*", dir );
@@ -577,32 +577,6 @@ BOOL BSPRand_EntityRandomizer()
 	}
 
 	// TODO:
-
-	// test entity manipulation
-	/*
-	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
-	{
-		Entity_t *ent = pCurrentMap->entities[i];
-		if ( ent )
-		{
-			// this also tests kv creation and such
-			Entity_KvSetValue( ent, "targetname", VarArgs( "srcbsprand_test_%d", i ) );
-
-			Vector origin = Entity_GetOrigin( ent );
-			//QAngle angles = Entity_GetAngles( ent );
-
-			origin.x += i;
-			origin.y += i;
-			origin.z += i;
-
-			Entity_SetOrigin( ent, origin );
-
-			//angles.x += i;
-			//angles.y += i;
-			//angles.z += i;
-		}
-	}
-	*/
 
 	// Randomize models
 	Spew( "Randomizing models...\n" );
