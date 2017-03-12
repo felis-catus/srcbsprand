@@ -632,7 +632,7 @@ BOOL BSPRand_EntityRandomizer()
 		}
 	}
 
-	// Randomize sounds (ambient_generic)
+	// Randomize sounds
 	Spew( "Randomizing sounds...\n" );
 	if ( iSoundNameCacheSize != 0 )
 	{
@@ -648,7 +648,25 @@ BOOL BSPRand_EntityRandomizer()
 				// Generic ambient sounds
 				const char *randSound = BSPRand_GetRandomSound();
 				Entity_KvSetString( ent, "message", randSound );
+			}
+			else if ( StrEq( Entity_GetClassname( ent ), "func_door" ) ||
+				StrEq( Entity_GetClassname( ent ), "func_door_rotating" ) )
+			{
+				// Doors, randomize open & close sounds
+				const char *randSound1 = BSPRand_GetRandomSound();
+				const char *randSound2 = BSPRand_GetRandomSound();
 
+				const char *randCloseSound1 = BSPRand_GetRandomSound();
+				const char *randCloseSound2 = BSPRand_GetRandomSound();
+
+				Entity_KvSetString( ent, "noise1", randSound1 );
+				Entity_KvSetString( ent, "noise2", randSound2 );
+
+				Entity_KvSetString( ent, "startclosesound", randCloseSound1 );
+				Entity_KvSetString( ent, "closesound", randCloseSound2 );
+
+				// Always loop moving sound for lulz
+				Entity_KvSetBool( ent, "loopmovesound", TRUE );
 			}
 		}
 	}
