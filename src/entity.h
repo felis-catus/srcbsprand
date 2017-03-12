@@ -8,7 +8,19 @@ typedef struct
 } Entity_t;
 
 const char *Entity_KvGetValue( Entity_t *ent, const char *key );
+const char *Entity_KvGetString( Entity_t *ent, const char *key );
+int Entity_KvGetInt( Entity_t *ent, const char *key );
+float Entity_KvGetFloat( Entity_t *ent, const char *key );
+color32 Entity_KvGetColor( Entity_t *ent, const char *key );
+BOOL Entity_KvGetBool( Entity_t *ent, const char *key );
+
 void Entity_KvSetValue( Entity_t *ent, const char *key, const char *value );
+void Entity_KvSetString( Entity_t *ent, const char *key, const char *value );
+void Entity_KvSetInt( Entity_t *ent, const char *key, int value );
+void Entity_KvSetFloat( Entity_t *ent, const char *key, float value );
+void Entity_KvSetColor( Entity_t *ent, const char *key, color32 value );
+void Entity_KvSetBool( Entity_t *ent, const char *key, BOOL value );
+
 KeyValue_t *Entity_KvCreate( Entity_t *ent, const char *key, const char *value );
 
 Vector Entity_GetOrigin( Entity_t *ent );
