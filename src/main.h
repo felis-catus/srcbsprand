@@ -2,7 +2,6 @@
 #define MAIN_H
 
 extern BOOL bVerbose;
-extern int iSeed;
 extern char szGameDir[MAX_PATH * 2];
 extern BOOL bBSPTexturesOnly;
 extern BOOL bDumpEntList;
@@ -16,7 +15,6 @@ BOOL Main_Init();
 void Main_Cleanup();
 
 BOOL Main_IsVerbose();
-int Main_GetSeed();
 char *Main_GetGameDir();
 BOOL Main_BSPTexturesOnly();
 BOOL Main_ShouldDumpEntList();

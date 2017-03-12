@@ -19,14 +19,18 @@ int iModelNameCacheSize;
 char **pszSoundNameCache;
 int iSoundNameCacheSize;
 
-int iRandSeed;
+unsigned int uRandSeed;
 
 int iLooseMaterialCount;
 int iLooseModelCount;
 int iLooseSoundCount;
 
-int BSPRand_GetRandomSeed() { return iRandSeed; }
-void BSPRand_SetRandomSeed( int seed ) { iRandSeed = seed; }
+unsigned int BSPRand_GetRandomSeed() { return uRandSeed; }
+void BSPRand_SetRandomSeed( unsigned int seed ) 
+{
+	srand( seed );
+	uRandSeed = seed;
+}
 
 Map_t *BSPRand_GetCurrentMap() { return pCurrentMap; }
 void BSPRand_SetCurrentMap( Map_t *map ) { pCurrentMap = map; }
@@ -506,6 +510,36 @@ BOOL BSPRand_RecursiveResourceScan( char *current )
 	return success;
 }
 
+const char *BSPRand_GetRandomMaterial()
+{
+	if ( iMatNameCacheSize == 0 )
+		return "";
+
+	int iRand = rand() % iMatNameCacheSize;
+
+	return pszMatNameCache[iRand];
+}
+
+const char *BSPRand_GetRandomModel()
+{
+	if ( iModelNameCacheSize == 0 )
+		return "";
+
+	int iRand = rand() % iModelNameCacheSize;
+
+	return pszModelNameCache[iRand];
+}
+
+const char *BSPRand_GetRandomSound()
+{
+	if ( iSoundNameCacheSize == 0 )
+		return "";
+
+	int iRand = rand() % iSoundNameCacheSize;
+
+	return pszSoundNameCache[iRand];
+}
+
 void BSPRand_ChangeHeader()
 {
 	Spew( "Changing header...\n" );
@@ -593,30 +627,8 @@ BOOL BSPRand_EntityRandomizer()
 			if ( StrContains( classname, "prop_physics" ) )
 				continue;
 
-			// TODO: need better rand? lol
-			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
-			srand( seed );
-
-			int iRand;
-			const char *randModel;
-			/*if ( StrContains( classname, "prop_physics" ) )
-			{
-				if ( iPropModelNameCacheSize == 0 )
-					continue;
-
-				iRand = rand() % iModelNameCacheSize;
-				randModel = pszPropModelNameCache[iRand];
-			}
-			else
-			{*/
-				if ( iModelNameCacheSize == 0 )
-					continue;
-
-				iRand = rand() % iModelNameCacheSize;
-				randModel = pszModelNameCache[iRand];
-			//}
-
-			Entity_KvSetValue( ent, "model", randModel );
+			const char *randModel = BSPRand_GetRandomModel();
+			Entity_KvSetString( ent, "model", randModel );
 		}
 	}
 
@@ -633,13 +645,10 @@ BOOL BSPRand_EntityRandomizer()
 			if ( StrEq( Entity_GetClassname( ent ), "ambient_generic" ) ||
 				StrEq( Entity_GetClassname( ent ), "ambient_fmod" ) ) // PVK2 has these :)
 			{
-				// TODO: need better rand? lol
-				int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
-				srand( seed );
-				int iRand = rand() % iSoundNameCacheSize;
+				// Generic ambient sounds
+				const char *randSound = BSPRand_GetRandomSound();
+				Entity_KvSetString( ent, "message", randSound );
 
-				const char *randSound = pszSoundNameCache[iRand];
-				Entity_KvSetValue( ent, "message", randSound );
 			}
 		}
 	}
@@ -879,19 +888,14 @@ BOOL BSPRand_TextureRandomizer()
 		{
 			StringTableItem_t *item = malloc( sizeof( StringTableItem_t ) );
 
-			// TODO: need better rand? lol
-			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
-			srand( seed );
-			int iRand = rand() % iMatNameCacheSize;
-
 			// we put random string in here, also fixing up indices
-			item->data = pszMatNameCache[iRand];
+			item->data = BSPRand_GetRandomMaterial();
 			item->index = totalLen + 1;
 			stringTable[i] = item;
 
 			totalLen += strlen( item->data ) + 1;
 
-			V_Spew( "Adding %s to the string table (idx: %d) (rand: %d)\n", item->data, item->index, iRand );
+			V_Spew( "Adding %s to the string table (idx: %d)\n", item->data, item->index );
 		}
 
 		char newStringData[MAX_STRINGDATA];

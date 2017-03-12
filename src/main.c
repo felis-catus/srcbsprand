@@ -7,7 +7,7 @@
 // Vars
 //
 BOOL bVerbose;
-int iSeed;
+unsigned int uSeed;
 char szGameDir[MAX_PATH * 2];
 BOOL bBSPTexturesOnly;
 BOOL bDumpEntList;
@@ -16,7 +16,6 @@ BOOL bDumpStrTable;
 clock_t clockStart;
 
 BOOL Main_IsVerbose() { return bVerbose; }
-int Main_GetSeed() { return iSeed; }
 char *Main_GetGameDir() { return szGameDir; }
 BOOL Main_BSPTexturesOnly() { return bBSPTexturesOnly; }
 BOOL Main_ShouldDumpEntList() { return bDumpEntList; }
@@ -68,8 +67,8 @@ int Main_Execute( int argc, char *argv[] )
 		}
 		else if ( StrEq( argv[i], "-seed" ) )
 		{
-			iSeed = strtol( argv[i + 1], NULL, 10 );
-			Spew( "Seed: %d\n", iSeed );
+			uSeed = strtol( argv[i + 1], NULL, 10 );
+			Spew( "Seed: %d\n", uSeed );
 		}
 		else if ( StrEq( argv[i], "-gamedir" ) )
 		{
@@ -116,13 +115,13 @@ int Main_Execute( int argc, char *argv[] )
 
 	Spew( "Randomizer init!\n" );
 
-	if ( iSeed == 0 )
+	if ( uSeed == 0 )
 	{
-		iSeed = (int)time( 0 );
-		Spew( "Using unix time as seed (%d)\n", iSeed );
+		uSeed = (unsigned int)time( 0 );
+		Spew( "Using unix time as seed (%d)\n", uSeed );
 	}
 
-	BSPRand_SetRandomSeed( iSeed );
+	BSPRand_SetRandomSeed( uSeed );
 
 	if ( szGameDir[0] == 0 )
 	{
@@ -176,7 +175,7 @@ int Main_Execute( int argc, char *argv[] )
 
 BOOL Main_Init()
 {
-	iSeed = 0;
+	uSeed = 0;
 	memset( szGameDir, 0, sizeof( szGameDir ) );
 	bBSPTexturesOnly = FALSE;
 	bDumpEntList = FALSE;

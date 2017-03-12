@@ -15,7 +15,7 @@ typedef struct
 typedef struct
 {
 	int index;
-	char *data;
+	const char *data;
 } StringTableItem_t;
 
 // The loaded map
@@ -60,7 +60,7 @@ typedef struct
 extern Map_t *pCurrentMap;
 extern int iTexdataCache[12288];
 extern char **pszMatNameCache;
-extern int iRandSeed;
+extern unsigned int uRandSeed;
 
 BOOL BSPRand_Init();
 void BSPRand_Cleanup();
@@ -79,8 +79,8 @@ BOOL BSPRand_BuildEntBuffer();
 
 void BSPRand_ClearCaches();
 
-int BSPRand_GetRandomSeed();
-void BSPRand_SetRandomSeed( int seed );
+unsigned int BSPRand_GetRandomSeed();
+void BSPRand_SetRandomSeed( unsigned int seed );
 
 Map_t *BSPRand_GetCurrentMap();
 void BSPRand_SetCurrentMap( Map_t *map );
@@ -88,5 +88,9 @@ void BSPRand_SetCurrentMap( Map_t *map );
 BOOL BSPRand_BuildResourcesList();
 BOOL BSPRand_VPKResourceScan( char *dir, BOOL allowMaterials );
 BOOL BSPRand_RecursiveResourceScan( char *current );
+
+const char *BSPRand_GetRandomMaterial();
+const char *BSPRand_GetRandomModel();
+const char *BSPRand_GetRandomSound();
 
 #endif
