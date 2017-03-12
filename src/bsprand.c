@@ -1029,9 +1029,6 @@ BOOL BSPRand_TextureRandomizer()
 		{
 			int cachesize = map->textureCount;
 
-			// TODO: need better rand? lol
-			int seed = ( BSPRand_GetRandomSeed() + ( i * 0xD1CE ) );
-			srand( seed );
 			int iRand = rand() % cachesize;
 
 			int stridx = map->texdataStringTable[map->texinfo[i]->texdata];
