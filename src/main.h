@@ -3,6 +3,7 @@
 
 extern BOOL bVerbose;
 extern char szGameDir[MAX_PATH * 2];
+extern char szModName[256];
 extern BOOL bBSPTexturesOnly;
 extern BOOL bDumpEntList;
 extern BOOL bDumpTexList;
@@ -15,7 +16,8 @@ BOOL Main_Init();
 void Main_Cleanup();
 
 BOOL Main_IsVerbose();
-char *Main_GetGameDir();
+const char *Main_GetGameDir();
+const char *Main_GetModName();
 BOOL Main_BSPTexturesOnly();
 BOOL Main_ShouldDumpEntList();
 BOOL Main_ShouldDumpTexList();

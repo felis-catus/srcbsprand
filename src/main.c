@@ -9,6 +9,7 @@
 BOOL bVerbose;
 unsigned int uSeed;
 char szGameDir[MAX_PATH * 2];
+char szModName[256];
 BOOL bBSPTexturesOnly;
 BOOL bDumpEntList;
 BOOL bDumpTexList;
@@ -16,7 +17,8 @@ BOOL bDumpStrTable;
 clock_t clockStart;
 
 BOOL Main_IsVerbose() { return bVerbose; }
-char *Main_GetGameDir() { return szGameDir; }
+const char *Main_GetGameDir() { return szGameDir; }
+const char *Main_GetModName() { return szModName; }
 BOOL Main_BSPTexturesOnly() { return bBSPTexturesOnly; }
 BOOL Main_ShouldDumpEntList() { return bDumpEntList; }
 BOOL Main_ShouldDumpTexList() { return bDumpTexList; }
@@ -75,8 +77,26 @@ int Main_Execute( int argc, char *argv[] )
 			strcpy_s( szGameDir, sizeof( szGameDir ), argv[i + 1] );
 			Spew( "Using gamedir \"%s\"\n", szGameDir );
 
+			const char *pToLastDirName = NULL;
+			int len = strlen( szGameDir );
+
+			if ( szGameDir[len - 1] == '\\' || szGameDir[len - 1] == '/' )
+				len--; // trailing slash
+
+			while ( len > 0 )
+			{
+				if ( szGameDir[len - 1] == '\\' || szGameDir[len - 1] == '/' )
+				{
+					pToLastDirName = &szGameDir[len];
+					break;
+				}
+
+				len--;
+			}
+
+			strcpy_s( szModName, sizeof( szModName ), pToLastDirName );
+
 			bBSPTexturesOnly = FALSE;
-			Spew( "bBSPTexturesOnly = false\n" );
 		}
 		else if ( StrEq( argv[i], "-bsptexonly" ) )
 		{

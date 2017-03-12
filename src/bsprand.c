@@ -689,6 +689,60 @@ BOOL BSPRand_EntityRandomizer()
 		Entity_KvSetString( ent, "message", sound );
 		Entity_KvSetInt( ent, "volume", volume );
 	}
+
+	// Randomize NPCs (game specific)
+	if ( StrEq( Main_GetModName(), "hl2" ) ) // Only in HL2 for now
+	{
+		Spew( "Randomizing NPCs...\n" );
+
+		const char *szHL2NPCList[32] =
+		{
+			"npc_alyx",
+			"npc_antlion",
+			"npc_antlionguard",
+			"npc_barnacle",
+			"npc_barney",
+			"npc_breen",
+			"npc_citizen",
+			"npc_clawscanner",
+			"npc_combine_s",
+			"npc_combinegunship",
+			"npc_crow",
+			"npc_dog",
+			"npc_eli",
+			"npc_fastzombie",
+			"npc_gman",
+			"npc_headcrab",
+			"npc_headcrab_black",
+			"npc_headcrab_fast",
+			"npc_helicopter",
+			"npc_kleiner",
+			"npc_manhack",
+			"npc_metropolice",
+			"npc_monk",
+			"npc_mossman",
+			"npc_pigeon",
+			"npc_poisonzombie",
+			"npc_rollermine",
+			"npc_seagull",
+			"npc_stalker",
+			"npc_strider",
+			"npc_vortigaunt",
+			"npc_zombie",
+		};
+
+		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+		{
+			Entity_t *ent = pCurrentMap->entities[i];
+			if ( !ent || !StrContains( Entity_GetClassname( ent ), "npc_" ) )
+				continue;
+
+			int iRand = rand() % 32;
+			const char *randNPC = szHL2NPCList[iRand];
+			Entity_KvSetString( ent, "classname", randNPC );
+		}
+	}
+
 	BSPRand_BuildEntBuffer();
 
 	Spew( "Entities randomized!\n" );
