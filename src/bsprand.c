@@ -664,6 +664,19 @@ BOOL BSPRand_EntityRandomizer()
 		Entity_KvSetInt( ent, "volume", volume );
 	}
 
+	// Set changelevel trigger destinations to randomized (_r) maps
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( !ent || !StrEq( Entity_GetClassname( ent ), "trigger_changelevel" ) )
+			continue;
+
+		char buf[256];
+		strcpy_s( buf, sizeof( buf ), Entity_KvGetString( ent, "map" ) );
+		strcat_s( buf, sizeof( buf ), "_r" );
+		Entity_KvSetString( ent, "map", buf );
+	}
+
 	// Randomize NPCs (game specific)
 	if ( StrEq( Main_GetModName(), "hl2" ) ) // Only in HL2 for now
 	{
