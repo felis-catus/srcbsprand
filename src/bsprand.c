@@ -678,9 +678,9 @@ BOOL BSPRand_EntityRandomizer()
 	}
 
 	// Randomize NPCs (game specific)
-	if ( StrEq( Main_GetModName(), "hl2" ) ) // Only in HL2 for now
+	if ( StrEq( Main_GetModName(), "hl2" ) ) // Half-Life 2
 	{
-		Spew( "Randomizing NPCs...\n" );
+		Spew( "Randomizing NPCs for Half-Life 2...\n" );
 
 		const char *szHL2NPCList[32] =
 		{
@@ -718,6 +718,10 @@ BOOL BSPRand_EntityRandomizer()
 			"npc_zombie",
 		};
 
+		NPCList_t npcs;
+		npcs.list = szHL2NPCList;
+		npcs.count = 32;
+
 		// For generic/cycler actors
 		const char *szHL2ActorModelList[11] =
 		{
@@ -734,6 +738,10 @@ BOOL BSPRand_EntityRandomizer()
 			"models/vortigaunt.mdl"
 		};
 
+		NPCList_t actorModels;
+		actorModels.list = szHL2ActorModelList;
+		actorModels.count = 11;
+
 		// Story protected NPCs won't be randomized by default
 		const char *szHL2StoryProtectedNPCs[10] =
 		{
@@ -749,43 +757,118 @@ BOOL BSPRand_EntityRandomizer()
 			"npc_mossman"
 		};
 
-		for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+		NPCList_t storyProtected;
+		storyProtected.list = szHL2StoryProtectedNPCs;
+		storyProtected.count = 10;
+
+		BSPRand_RandomizeNPCs( npcs, actorModels, storyProtected, NPCLIST_HL2 );
+	}
+	else if ( StrEq( Main_GetModName(), "hl1" ) ) // Half-Life: Source
+	{
+		Spew( "Randomizing NPCs for Half-Life: Source...\n" );
+
+		const char *szHL1NPCList[27] =
 		{
-			Entity_t *ent = pCurrentMap->entities[i];
-			if ( !ent )
-				continue;
+			"monster_alien_controller",
+			"monster_alien_grunt",
+			"monster_alien_slave",
+			"monster_apache",
+			"monster_babycrab",
+			"monster_barnacle",
+			"monster_barney",
+			"monster_bigmomma",
+			"monster_bullchicken",
+			"monster_cockroach",
+			"monster_gargantua",
+			"monster_gman",
+			"monster_headcrab",
+			"monster_houndeye",
+			"monster_human_assassin",
+			"monster_human_grunt",
+			"monster_ichthyosaur",
+			"monster_leech",
+			"monster_miniturret",
+			"monster_nihilanth",
+			"monster_osprey",
+			"monster_scientist",
+			"monster_sentry",
+			"monster_snark",
+			"monster_tentacle",
+			"monster_turret",
+			"monster_zombie"
+		};
 
-			if ( StrContains( Entity_GetClassname( ent ), "npc_" ) )
-			{
-				BOOL canRandomize = TRUE;
-				for ( int i = 0; i < 10; i++ )
-				{
-					// Story protected?
-					if ( StrEq( Entity_GetClassname( ent ), szHL2StoryProtectedNPCs[i] ) )
-						canRandomize = FALSE;
-				}
+		NPCList_t npcs;
+		npcs.list = szHL1NPCList;
+		npcs.count = 27;
 
-				if ( canRandomize )
-				{
-					int iRand = rand() % 32;
-					const char *randNPC = szHL2NPCList[iRand];
-					Entity_KvSetString( ent, "classname", randNPC );
-				}
-			}
-			else if ( StrEq( Entity_GetClassname( ent ), "generic_actor" ) ||
-				StrEq( Entity_GetClassname( ent ), "cycler_actor" ) )
-			{
-				int iRand = rand() % 11;
-				const char *randModel = szHL2ActorModelList[iRand];
-				Entity_KvSetString( ent, "model", randModel );
-			}
-		}
+		// No actor models in HL1
+		NPCList_t actorModels;
+		actorModels.list = NULL;
+		actorModels.count = 0;
+
+		// Story protected NPCs won't be randomized by default
+		const char *szHL1StoryProtectedNPCs[3] =
+		{
+			"monster_barney",
+			"monster_gman",
+			"monster_scientist",
+		};
+
+		NPCList_t storyProtected;
+		storyProtected.list = szHL1StoryProtectedNPCs;
+		storyProtected.count = 3;
+
+		BSPRand_RandomizeNPCs( npcs, actorModels, storyProtected, NPCLIST_HL1 );
 	}
 
 	BSPRand_BuildEntBuffer();
 
 	Spew( "Entities randomized!\n" );
 	return TRUE;
+}
+
+void BSPRand_RandomizeNPCs( NPCList_t npcs, NPCList_t actorModels, NPCList_t storyProtected, int game )
+{
+	if ( !npcs.list || npcs.count == 0 )
+		return;
+
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( !ent )
+			continue;
+
+		if ( game != NPCLIST_HL1 && StrContains( Entity_GetClassname( ent ), "npc_" ) ||
+			game == NPCLIST_HL1 && StrContains( Entity_GetClassname( ent ), "monster_" ) )
+		{
+			BOOL canRandomize = TRUE;
+			if ( !Main_IgnoreStoryNPCs() && storyProtected.list )
+			{
+				for ( int i = 0; i < storyProtected.count; i++ )
+				{
+					// Story protected?
+					if ( StrEq( Entity_GetClassname( ent ), storyProtected.list[i] ) )
+						canRandomize = FALSE;
+				}
+			}
+
+			if ( canRandomize )
+			{
+				int iRand = rand() % npcs.count;
+				const char *randNPC = npcs.list[iRand];
+				Entity_KvSetString( ent, "classname", randNPC );
+			}
+		}
+		else if ( actorModels.list && actorModels.count != 0 &&
+			StrEq( Entity_GetClassname( ent ), "generic_actor" ) ||
+			StrEq( Entity_GetClassname( ent ), "cycler_actor" ) )
+		{
+			int iRand = rand() % actorModels.count;
+			const char *randModel = actorModels.list[iRand];
+			Entity_KvSetString( ent, "model", randModel );
+		}
+	}
 }
 
 BOOL BSPRand_ExtractEnts()

@@ -11,6 +11,7 @@ unsigned int uSeed;
 char szGameDir[MAX_PATH * 2];
 char szModName[256];
 BOOL bBSPTexturesOnly;
+BOOL bIgnoreStoryNPCs;
 BOOL bDumpEntList;
 BOOL bDumpTexList;
 BOOL bDumpStrTable;
@@ -20,6 +21,7 @@ BOOL Main_IsVerbose() { return bVerbose; }
 const char *Main_GetGameDir() { return szGameDir; }
 const char *Main_GetModName() { return szModName; }
 BOOL Main_BSPTexturesOnly() { return bBSPTexturesOnly; }
+BOOL Main_IgnoreStoryNPCs() { return bIgnoreStoryNPCs; };
 BOOL Main_ShouldDumpEntList() { return bDumpEntList; }
 BOOL Main_ShouldDumpTexList() { return bDumpTexList; }
 BOOL Main_ShouldDumpStringTable() { return bDumpStrTable; }
@@ -48,6 +50,7 @@ int Main_Execute( int argc, char *argv[] )
 			"-seed : Random seed, eg. -seed 133769420\n",
 			"-gamedir : Location for the Source game folder you wish to get materials from.\n",
 			"-bsptexonly : Texture randomizer will only use textures inside the BSP. If no gamedir is available this will be used by default.\n",
+			"-ignorestorynpcs : \"Story protected\" NPCs will be randomized.",
 			"-dumpentlist : Dump entity list to the same dir as your BSP.\n",
 			"-dumptexlist : Same as above, but for texture list.\n",
 			"-dumpstrtable : Dumps both input and output string tables.\n" );
@@ -60,6 +63,7 @@ int Main_Execute( int argc, char *argv[] )
 
 	Spew( "Selected file: %s\n", filename );
 
+	// TODO: Need some generic config for BSPRand instead of cmd line, there will be a lot of options
 	for ( int i = 1; i < argc; i++ )
 	{
 		if ( StrEq( argv[i], "-v" ) || StrEq( argv[i], "-verbose" ) )
@@ -102,6 +106,11 @@ int Main_Execute( int argc, char *argv[] )
 		{
 			bBSPTexturesOnly = TRUE;
 			Spew( "bBSPTexturesOnly = true\n" );
+		}
+		else if ( StrEq( argv[i], "-ignorestorynpcs" ) )
+		{
+			bIgnoreStoryNPCs = TRUE;
+			Spew( "bIgnoreStoryNPCs = true\n" );
 		}
 		else if ( StrEq( argv[i], "-dumpentlist" ) )
 		{

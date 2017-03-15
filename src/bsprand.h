@@ -18,6 +18,18 @@ typedef struct
 	const char *data;
 } StringTableItem_t;
 
+enum
+{
+	NPCLIST_HL2,
+	NPCLIST_HL1,
+};
+
+typedef struct
+{
+	const char **list;
+	int count;
+} NPCList_t;
+
 // The loaded map
 typedef struct
 {
@@ -71,11 +83,12 @@ void BSPRand_ChangeHeader();
 BOOL BSPRand_ChangeTextures();
 void BSPRand_ChangeModels();
 
-BOOL BSPRand_TextureRandomizer();
-
 BOOL BSPRand_ExtractEnts();
 BOOL BSPRand_EntityRandomizer();
+void BSPRand_RandomizeNPCs( NPCList_t npcList, NPCList_t actorModelList, NPCList_t storyProtectedList, int game );
 BOOL BSPRand_BuildEntBuffer();
+
+BOOL BSPRand_TextureRandomizer();
 
 void BSPRand_ClearCaches();
 
