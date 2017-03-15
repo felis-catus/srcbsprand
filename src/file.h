@@ -1,9 +1,9 @@
 #ifndef FILE_H
 #define FILE_H
 
-BOOL File_Init( const char *filename );
+BOOL File_Init( const char *filename, const char *copyDest );
 
-BOOL File_CopyBSP( const char *filename );
+BOOL File_CopyBSP( const char *filename, const char *destname );
 BOOL File_IsValid( FILE *file );
 BOOL File_ReadBSP( const char *filename );
 

@@ -2,6 +2,7 @@
 #define MAIN_H
 
 extern BOOL bVerbose;
+extern char szOutputDir[MAX_PATH * 2];
 extern char szGameDir[MAX_PATH * 2];
 extern char szModName[256];
 extern BOOL bBSPTexturesOnly;
@@ -17,6 +18,7 @@ BOOL Main_Init();
 void Main_Cleanup();
 
 BOOL Main_IsVerbose();
+const char *Main_GetOutputDir();
 const char *Main_GetGameDir();
 const char *Main_GetModName();
 BOOL Main_BSPTexturesOnly();

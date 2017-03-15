@@ -139,6 +139,14 @@ const char *GetFileExtension( const char *path )
 	return src;
 }
 
+const char *GetFileName( const char *in )
+{
+	const char *out = in + strlen( in ) - 1;
+	while ( ( out > in ) && ( !PATHSEPARATOR( *( out - 1 ) ) ) )
+		out--;
+	return out;
+}
+
 void StripExtension( const char *in, char *out, int outSize )
 {
 	int end = strlen( in ) - 1;

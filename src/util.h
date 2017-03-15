@@ -23,6 +23,7 @@ const char *VarArgs( const char *format, ... );
 BOOL PATHSEPARATOR( char c );
 
 const char *GetFileExtension( const char *path );
+const char *GetFileName( const char *in );
 
 void StripExtension( const char *in, char *out, int outSize );
 

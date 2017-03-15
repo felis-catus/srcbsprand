@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 
-BOOL File_Init( const char *filename )
+BOOL File_Init( const char *filename, const char *copyDest )
 {
 	Spew( "Checking if selected BSP is valid...\n" );
 	FILE *file = fopen( filename, "r+b" );
@@ -10,7 +10,7 @@ BOOL File_Init( const char *filename )
 	if ( !File_IsValid( file ) )
 		return FALSE;
 
-	if ( !File_CopyBSP( filename ) )
+	if ( !File_CopyBSP( filename, copyDest ) )
 		return FALSE;
 
 	return TRUE;
@@ -35,19 +35,23 @@ BOOL File_ReadBSP( const char *filename )
 	return TRUE;
 }
 
-BOOL File_CopyBSP( const char *filename )
+BOOL File_CopyBSP( const char *filename, const char *destname )
 {
 	Spew( "Copying BSP...\n" );
 
 	char buf[BUFSIZ];
 	unsigned int size;
 
-	char name[1024];
-	strncpy( name, filename, 1024 );
-	name[strlen( filename ) - 4] = 0;
+	if ( !destname || destname[0] == '\0' )
+	{
+		char name[1024];
+		strncpy( name, filename, 1024 );
+		name[strlen( filename ) - 4] = 0;
 
-	char destname[1024];
-	_snprintf( destname, sizeof( destname ), "%s_r.bsp", name );
+		char buf[1024];
+		_snprintf( buf, sizeof( buf ), "%s_r.bsp", name );
+		destname = buf;
+	}
 
 	FILE *source = fopen( filename, "rb" );
 	FILE *dest = fopen( destname, "wb" );

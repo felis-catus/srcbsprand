@@ -7,6 +7,7 @@
 // Vars
 //
 BOOL bVerbose;
+char szOutputDir[MAX_PATH * 2];
 unsigned int uSeed;
 char szGameDir[MAX_PATH * 2];
 char szModName[256];
@@ -18,6 +19,7 @@ BOOL bDumpStrTable;
 clock_t clockStart;
 
 BOOL Main_IsVerbose() { return bVerbose; }
+const char *Main_GetOutputDir() { return szOutputDir; }
 const char *Main_GetGameDir() { return szGameDir; }
 const char *Main_GetModName() { return szModName; }
 BOOL Main_BSPTexturesOnly() { return bBSPTexturesOnly; }
@@ -46,9 +48,10 @@ int Main_Execute( int argc, char *argv[] )
 	{
 		Spew( "\nUsage:\nDrag n drop .bsp into the .exe and I'll mess it up!\nOr just use cmd\nDon't worry, the original .bsp will not be modified.\n\n" );
 		Spew( "Args:\n%s%s%s%s%s%s%s",
+			"-out, -output : Output directory.",
 			"-v, -verbose : (Very) verbose output.\n",
 			"-seed : Random seed, eg. -seed 133769420\n",
-			"-gamedir : Location for the Source game folder you wish to get materials from.\n",
+			"-game, -gamedir : Location for the Source game folder you wish to get materials from.\n",
 			"-bsptexonly : Texture randomizer will only use textures inside the BSP. If no gamedir is available this will be used by default.\n",
 			"-ignorestorynpcs : \"Story protected\" NPCs will be randomized.",
 			"-dumpentlist : Dump entity list to the same dir as your BSP.\n",
@@ -66,7 +69,11 @@ int Main_Execute( int argc, char *argv[] )
 	// TODO: Need some generic config for BSPRand instead of cmd line, there will be a lot of options
 	for ( int i = 1; i < argc; i++ )
 	{
-		if ( StrEq( argv[i], "-v" ) || StrEq( argv[i], "-verbose" ) )
+		if ( StrEq( argv[i], "-out" ) || StrEq( argv[i], "-output" ) )
+		{
+			strcpy_s( szOutputDir, sizeof( szOutputDir ), argv[i + 1] );
+		}
+		else if ( StrEq( argv[i], "-v" ) || StrEq( argv[i], "-verbose" ) )
 		{
 			bVerbose = TRUE;
 			Spew( "bVerbose = true\n" );
@@ -76,7 +83,7 @@ int Main_Execute( int argc, char *argv[] )
 			uSeed = strtol( argv[i + 1], NULL, 10 );
 			Spew( "Seed: %d\n", uSeed );
 		}
-		else if ( StrEq( argv[i], "-gamedir" ) )
+		else if ( StrEq( argv[i], "-game" ) || StrEq( argv[i], "-gamedir" ) )
 		{
 			strcpy_s( szGameDir, sizeof( szGameDir ), argv[i + 1] );
 			Spew( "Using gamedir \"%s\"\n", szGameDir );
@@ -131,7 +138,25 @@ int Main_Execute( int argc, char *argv[] )
 
 	BSPRand_CreateMap();
 
-	if ( !File_Init( argv[1] ) )
+	char name[1024];
+	strncpy( name, filename, 1024 );
+	name[strlen( filename ) - 4] = 0;
+
+	char destname[1024];
+	if ( szOutputDir[0] != '\0' )
+	{
+		char szFile[MAX_PATH];
+		StripExtension( GetFileName( filename ), szFile, sizeof( szFile ) );
+		_snprintf( destname, sizeof( destname ), "%s\\%s_r.bsp", szOutputDir, szFile );
+	}
+	else
+	{
+		_snprintf( destname, sizeof( destname ), "%s_r.bsp", name );
+	}
+
+	Spew( "Output: %s\n", destname );
+
+	if ( !File_Init( argv[1], destname ) )
 	{
 		Spew( "BSP READ FAIL!!! Exiting...\n" );
 #ifdef _DEBUG
@@ -146,7 +171,7 @@ int Main_Execute( int argc, char *argv[] )
 
 	if ( uSeed == 0 )
 	{
-		uSeed = (unsigned int)time( 0 );
+		uSeed = (unsigned int)time( NULL );
 		Spew( "Using unix time as seed (%d)\n", uSeed );
 	}
 
@@ -167,16 +192,7 @@ int Main_Execute( int argc, char *argv[] )
 		return -1;
 	}
 
-	char name[1024];
-	strncpy( name, argv[1], 1024 );
-	name[strlen( argv[1] ) - 4] = 0;
-
-	char destname[1024];
-	_snprintf( destname, sizeof( destname ), "%s_r.bsp", name );
-
 	Spew( separator );
-
-	Spew( "Output: %s\n", destname );
 
 	if ( !File_WriteBSP( destname ) )
 	{
@@ -205,7 +221,8 @@ int Main_Execute( int argc, char *argv[] )
 BOOL Main_Init()
 {
 	uSeed = 0;
-	memset( szGameDir, 0, sizeof( szGameDir ) );
+	szOutputDir[0] = '\0';
+	szGameDir[0] = '\0';
 	bBSPTexturesOnly = FALSE;
 	bDumpEntList = FALSE;
 	bDumpTexList = FALSE;
