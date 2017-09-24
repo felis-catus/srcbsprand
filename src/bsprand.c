@@ -576,9 +576,7 @@ BOOL BSPRand_EntityRandomizer()
 	}
 
 	// TODO:
-
 	// Randomize models
-	/*
 	Spew( "Randomizing models...\n" );
 	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
 	{
@@ -608,7 +606,7 @@ BOOL BSPRand_EntityRandomizer()
 			Entity_KvSetColor( ent, "rendercolor", randColor );
 		}
 	}
-	*/
+
 	// Randomize sounds
 	Spew( "Randomizing sounds...\n" );
 	if ( iSoundNameCacheSize != 0 )
