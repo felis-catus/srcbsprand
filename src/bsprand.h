@@ -2,7 +2,6 @@
 #define BSPRAND_H
 
 #define MAX_STRINGDATA 256000 // move this
-#define	MAX_MAP_ENTITIES 8192 // move this too
 
 // texture struct
 typedef struct
@@ -22,6 +21,7 @@ enum
 {
 	NPCLIST_HL2,
 	NPCLIST_HL1,
+	NPCLIST_BMS,
 };
 
 typedef struct
@@ -99,11 +99,12 @@ Map_t *BSPRand_GetCurrentMap();
 void BSPRand_SetCurrentMap( Map_t *map );
 
 BOOL BSPRand_BuildResourcesList();
-BOOL BSPRand_VPKResourceScan( const char *dir, BOOL allowMaterials );
+BOOL BSPRand_VPKResourceScan( const char *dir );
 BOOL BSPRand_RecursiveResourceScan( char *current );
 
 const char *BSPRand_GetRandomMaterial();
 const char *BSPRand_GetRandomModel();
 const char *BSPRand_GetRandomSound();
+color32 BSPRand_GetRandomColor();
 
 #endif

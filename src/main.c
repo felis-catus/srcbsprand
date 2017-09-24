@@ -48,12 +48,12 @@ int Main_Execute( int argc, char *argv[] )
 	{
 		Spew( "\nUsage:\nDrag n drop .bsp into the .exe and I'll mess it up!\nOr just use cmd\nDon't worry, the original .bsp will not be modified.\n\n" );
 		Spew( "Args:\n%s%s%s%s%s%s%s",
-			"-out, -output : Output directory.",
+			"-out, -output : Output directory.\n",
 			"-v, -verbose : (Very) verbose output.\n",
 			"-seed : Random seed, eg. -seed 133769420\n",
 			"-game, -gamedir : Location for the Source game folder you wish to get materials from.\n",
 			"-bsptexonly : Texture randomizer will only use textures inside the BSP. If no gamedir is available this will be used by default.\n",
-			"-ignorestorynpcs : \"Story protected\" NPCs will be randomized.",
+			"-ignorestorynpcs : \"Story protected\" NPCs will be randomized.\n",
 			"-dumpentlist : Dump entity list to the same dir as your BSP.\n",
 			"-dumptexlist : Same as above, but for texture list.\n",
 			"-dumpstrtable : Dumps both input and output string tables.\n" );

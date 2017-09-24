@@ -172,11 +172,11 @@ BOOL BSPRand_BuildResourcesList()
 	Map_t *map = BSPRand_GetCurrentMap();
 	BOOL hasGameDir = ( Main_GetGameDir()[0] != 0 );
 
-	if ( hasGameDir )
+	if ( hasGameDir && !Main_BSPTexturesOnly() )
 	{
 		// First scan VPKs, does both textures and sounds
 		Spew( "Scanning VPKs for resources...\n" );
-		BSPRand_VPKResourceScan( Main_GetGameDir(), !Main_BSPTexturesOnly() );
+		BSPRand_VPKResourceScan( Main_GetGameDir() );
 
 		// After that, loose files
 		Spew( "Scanning loose files for resources...\n" );
@@ -208,17 +208,6 @@ BOOL BSPRand_BuildResourcesList()
 				}
 			}
 		}
-		else
-		{
-			Spew( "Getting textures from BSP...\n" );
-
-			// push texnames into cache
-			for ( int i = 0; i < map->textureCount; i++ )
-			{
-				Texture_t *tex = map->textures[i];
-				iTexdataCache[i] = tex->dataidx;
-			}
-		}
 
 		// Loose Sounds
 		char *soundDir = "sound\\";
@@ -235,7 +224,7 @@ BOOL BSPRand_BuildResourcesList()
 	}
 	else
 	{
-		// No game dir, use textures from BSP
+		// Use textures from BSP
 		Spew( "Getting textures from BSP...\n" );
 
 		for ( int i = 0; i < map->textureCount; i++ )
@@ -248,7 +237,7 @@ BOOL BSPRand_BuildResourcesList()
 	return TRUE;
 }
 
-BOOL BSPRand_VPKResourceScan( const char *dir, BOOL allowMaterials )
+BOOL BSPRand_VPKResourceScan( const char *dir )
 {
 	char path[512];
 	sprintf( path, "%s\\*.*", dir );
@@ -540,6 +529,16 @@ const char *BSPRand_GetRandomSound()
 	return pszSoundNameCache[iRand];
 }
 
+color32 BSPRand_GetRandomColor()
+{
+	color32 clr;
+	clr.r = rand() % 256;
+	clr.g = rand() % 256;
+	clr.b = rand() % 256;
+	clr.a = rand() % 256;
+	return clr;
+}
+
 void BSPRand_ChangeHeader()
 {
 	Spew( "Changing header...\n" );
@@ -579,6 +578,7 @@ BOOL BSPRand_EntityRandomizer()
 	// TODO:
 
 	// Randomize models
+	/*
 	Spew( "Randomizing models...\n" );
 	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
 	{
@@ -603,9 +603,12 @@ BOOL BSPRand_EntityRandomizer()
 
 			const char *randModel = BSPRand_GetRandomModel();
 			Entity_KvSetString( ent, "model", randModel );
+
+			color32 randColor = BSPRand_GetRandomColor();
+			Entity_KvSetColor( ent, "rendercolor", randColor );
 		}
 	}
-
+	*/
 	// Randomize sounds
 	Spew( "Randomizing sounds...\n" );
 	if ( iSoundNameCacheSize != 0 )
@@ -645,6 +648,23 @@ BOOL BSPRand_EntityRandomizer()
 		}
 	}
 
+	// Randomize lights
+	// TODO:
+	/*
+	Spew( "Randomizing lights...\n" );
+	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
+	{
+		Entity_t *ent = pCurrentMap->entities[i];
+		if ( !ent )
+			continue;
+
+		if ( StrEq( Entity_GetClassname( ent ), "light" ) )
+		{
+
+		}
+	}
+	*/
+
 	// Randomize rotating brushes (func_rotating)
 	Spew( "Randomizing rotating brushes...\n" );
 	for ( int i = 0; i < pCurrentMap->entitiesCount; i++ )
@@ -682,7 +702,7 @@ BOOL BSPRand_EntityRandomizer()
 	{
 		Spew( "Randomizing NPCs for Half-Life 2...\n" );
 
-		const char *szHL2NPCList[32] =
+		const char *szHL2NPCList[] =
 		{
 			"npc_alyx",
 			"npc_antlion",
@@ -720,10 +740,10 @@ BOOL BSPRand_EntityRandomizer()
 
 		NPCList_t npcs;
 		npcs.list = szHL2NPCList;
-		npcs.count = 32;
+		npcs.count = ARRAYSIZE( szHL2NPCList );
 
 		// For generic/cycler actors
-		const char *szHL2ActorModelList[11] =
+		const char *szHL2ActorModelList[] =
 		{
 			"models/alyx.mdl",
 			"models/barney.mdl",
@@ -740,10 +760,10 @@ BOOL BSPRand_EntityRandomizer()
 
 		NPCList_t actorModels;
 		actorModels.list = szHL2ActorModelList;
-		actorModels.count = 11;
+		actorModels.count = ARRAYSIZE( szHL2ActorModelList );
 
 		// Story protected NPCs won't be randomized by default
-		const char *szHL2StoryProtectedNPCs[10] =
+		const char *szHL2StoryProtectedNPCs[] =
 		{
 			"npc_alyx",
 			"npc_barney",
@@ -759,7 +779,7 @@ BOOL BSPRand_EntityRandomizer()
 
 		NPCList_t storyProtected;
 		storyProtected.list = szHL2StoryProtectedNPCs;
-		storyProtected.count = 10;
+		storyProtected.count = ARRAYSIZE( szHL2StoryProtectedNPCs );
 
 		BSPRand_RandomizeNPCs( npcs, actorModels, storyProtected, NPCLIST_HL2 );
 	}
@@ -767,12 +787,12 @@ BOOL BSPRand_EntityRandomizer()
 	{
 		Spew( "Randomizing NPCs for Half-Life: Source...\n" );
 
-		const char *szHL1NPCList[27] =
+		const char *szHL1NPCList[] =
 		{
 			"monster_alien_controller",
 			"monster_alien_grunt",
 			"monster_alien_slave",
-			"monster_apache",
+			//"monster_apache",
 			"monster_babycrab",
 			"monster_barnacle",
 			"monster_barney",
@@ -785,22 +805,22 @@ BOOL BSPRand_EntityRandomizer()
 			"monster_houndeye",
 			"monster_human_assassin",
 			"monster_human_grunt",
-			"monster_ichthyosaur",
-			"monster_leech",
-			"monster_miniturret",
+			//"monster_ichthyosaur",
+			//"monster_leech",
+			//"monster_miniturret",
 			"monster_nihilanth",
-			"monster_osprey",
+			//"monster_osprey",
 			"monster_scientist",
-			"monster_sentry",
+			//"monster_sentry",
 			"monster_snark",
 			"monster_tentacle",
-			"monster_turret",
+			//"monster_turret",
 			"monster_zombie"
 		};
 
 		NPCList_t npcs;
 		npcs.list = szHL1NPCList;
-		npcs.count = 27;
+		npcs.count = ARRAYSIZE( szHL1NPCList );
 
 		// No actor models in HL1
 		NPCList_t actorModels;
@@ -808,7 +828,7 @@ BOOL BSPRand_EntityRandomizer()
 		actorModels.count = 0;
 
 		// Story protected NPCs won't be randomized by default
-		const char *szHL1StoryProtectedNPCs[3] =
+		const char *szHL1StoryProtectedNPCs[] =
 		{
 			"monster_barney",
 			"monster_gman",
@@ -817,9 +837,75 @@ BOOL BSPRand_EntityRandomizer()
 
 		NPCList_t storyProtected;
 		storyProtected.list = szHL1StoryProtectedNPCs;
-		storyProtected.count = 3;
+		storyProtected.count = ARRAYSIZE( szHL1StoryProtectedNPCs );
 
 		BSPRand_RandomizeNPCs( npcs, actorModels, storyProtected, NPCLIST_HL1 );
+	}
+	else if ( StrEq( Main_GetModName(), "bms" ) ) // Black Mesa
+	{
+		Spew( "Randomizing NPCs for Black Mesa...\n" );
+
+		const char *szBMSNPCList[] =
+		{
+			"npc_alien_controller",
+			"npc_alien_grunt",
+			"npc_alien_grunt_unarmored"
+			"npc_alien_slave",
+			"npc_babycrab",
+			"npc_barnacle",
+			"npc_barney",
+			"npc_bullsquid",
+			"npc_cockroach",
+			"npc_gargantua",
+			"npc_gonarch",
+			"npc_gman",
+			"npc_headcrab",
+			"npc_houndeye",
+			"npc_human_assassin",
+			"npc_human_commander",
+			"npc_human_grenadier",
+			"npc_human_grunt",
+			"npc_human_medic",
+			"npc_human_security",
+			"npc_human_scientist_kleiner",
+			"npc_human_scientist_eli",
+			"npc_human_scientist",
+			"npc_human_scientist_female",
+			"npc_snark",
+			"npc_tentacle",
+			"npc_zombie_scientist",
+			"npc_zombie_scientist_torso",
+			"npc_zombie_security",
+			"npc_zombie_grunt",
+			"npc_zombie_grunt_torso",
+		};
+
+		NPCList_t npcs;
+		npcs.list = szBMSNPCList;
+		npcs.count = ARRAYSIZE( szBMSNPCList );
+
+		// TODO:
+		NPCList_t actorModels;
+		actorModels.list = NULL;
+		actorModels.count = 0;
+
+		// Story protected NPCs won't be randomized by default
+		const char *szBMSStoryProtectedNPCs[] =
+		{
+			"npc_barney",
+			"npc_gman",
+			"npc_human_security",
+			"npc_human_scientist_kleiner",
+			"npc_human_scientist_eli",
+			"npc_human_scientist",
+			"npc_human_scientist_female",
+		};
+
+		NPCList_t storyProtected;
+		storyProtected.list = szBMSStoryProtectedNPCs;
+		storyProtected.count = ARRAYSIZE( szBMSStoryProtectedNPCs );
+
+		BSPRand_RandomizeNPCs( npcs, actorModels, storyProtected, NPCLIST_BMS );
 	}
 
 	BSPRand_BuildEntBuffer();
